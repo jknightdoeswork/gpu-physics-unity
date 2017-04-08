@@ -1,6 +1,6 @@
 A GPU Accelerated Voxel Physics Solver for Unity
 
-![64 Thousand Cubes][https://media.giphy.com/media/xUA7aRaZxX1wphJcME/giphy.gif]
+![gif][https://media.giphy.com/media/xUA7aRaZxX1wphJcME/giphy.gif]
 
 A Unity Command Buffer is used by GPUPhysics.cs to dispatch the compute and render shaders. 
 
