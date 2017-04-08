@@ -89,6 +89,9 @@
 
 			
 			// inverse transform matrix
+			// taken from richardkettlewell's post on
+			// https://forum.unity3d.com/threads/drawmeshinstancedindirect-example-comments-and-questions.446080/
+
 			float3x3 w2oRotation;
 			w2oRotation[0] = unity_ObjectToWorld[1].yzx * unity_ObjectToWorld[2].zxy - unity_ObjectToWorld[1].zxy * unity_ObjectToWorld[2].yzx;
 			w2oRotation[1] = unity_ObjectToWorld[0].zxy * unity_ObjectToWorld[2].yzx - unity_ObjectToWorld[0].yzx * unity_ObjectToWorld[2].zxy;
