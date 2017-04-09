@@ -4,13 +4,13 @@ Read more at
 
 [http://www.00jknight.com/blog/gpu-accelerated-voxel-physics-solver](http://www.00jknight.com/blog/gpu-accelerated-voxel-physics-solver)
 
-64,000 cubes
-
 ![gif](https://thumbs.gfycat.com/MammothInfantileDunlin-size_restricted.gif "Gif")
 
-1024 cubes
+64,000 cubes
 
 ![gif](https://fat.gfycat.com/JovialKnobbyBrahmanbull.gif "Gif")
+
+1024 cubes
 
 A Unity Command Buffer is used by GPUPhysics.cs to dispatch the compute and render shaders. 
 
