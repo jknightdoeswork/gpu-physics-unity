@@ -324,6 +324,10 @@ void CollisionDetection (uint3 id : SV_DispatchThreadID)
 // Input
 // RWStructuredBuffer<float3> particleForces; (defined in Collision Detection)
 // RWStructuredBuffer<float3> particleRelativePositions; (defined in Computation of Particle Values)
+float gravityCoefficient;
+float frictionCoefficient;
+float angularFrictionCoefficient;
+float deltaTime;
 // Output
 //RWStructuredBuffer<float3> rigidBodyAngularVelocities; // defined in Computation Of Particle Values
 //RWStructuredBuffer<float3> rigidBodyVelocities; // defined in Computation Of Particle Values
@@ -388,6 +392,12 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 
 	rigidBodyVelocities[id.x] += linearForce;
 	rigidBodyAngularVelocities[id.x] += angularForce; // probably wrong
+
+	rigidBodyVelocities[id.x] -= rigidBodyVelocities[id.x] * frictionCoefficient * deltaTime;
+
+	rigidBodyAngularVelocities[id.x] -= rigidBodyAngularVelocities[id.x]*angularFrictionCoefficient* deltaTime;
+
+	rigidBodyVelocities[id.x].y -= gravityCoefficient * deltaTime;
 }
 
 /////////////////////////////
@@ -396,6 +406,7 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 // Per RigidBody
 // Use rigidBodyForce and rigidBodyTorque to compute the rigid body position and rotation.
 // Input
+
 // RWStructuredBuffer<float3> rigidBodyForce defined in (Computation Of Momenta)
 // RWStructuredBuffer<float3> rigidBodyTorque defined in (Computation Of Momenta)
 // Output
@@ -417,12 +428,20 @@ q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
 [numthreads(RIGID_BODY_THREAD_COUNT,1,1)]
 void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 {
-	rigidBodyPositions[id.x] 		= rigidBodyPositions[id.x] + rigidBodyVelocities[id.x];
-	
+
+
+	rigidBodyPositions[id.x] 		= rigidBodyPositions[id.x] + rigidBodyVelocities[id.x] * deltaTime;
+	if (rigidBodyPositions[id.x].y < 0) {
+		rigidBodyPositions[id.x].y = 0;
+		if (rigidBodyVelocities[id.x].y < 0) {
+			rigidBodyVelocities[id.x].y = 0;
+		}
+	}	
+
 	// integration of angular momentum taken from
 	// http://gafferongames.com/game-physics/physics-in-3d/
 	float4 torqueQuaternion = float4(0, rigidBodyAngularVelocities[id.x]);
 	float4 spin = 0.5f * multQuat(torqueQuaternion, rigidBodyQuaternions[id.x]);
-	rigidBodyQuaternions[id.x] += spin;
+	rigidBodyQuaternions[id.x] += spin * deltaTime;
 	rigidBodyQuaternions[id.x] = normalize(rigidBodyQuaternions[id.x]);
 }

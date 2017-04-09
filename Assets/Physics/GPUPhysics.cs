@@ -15,6 +15,9 @@ public class GPUPhysics : MonoBehaviour {
 	public float springCoefficient;
 	public float dampingCoefficient;
 	public float tangentialCoefficient;
+	public float gravityCoefficient;
+	public float frictionCoefficient;
+	public float angularFrictionCoefficient;
 
 	public int x = 10;
 	public int y = 20;
@@ -72,7 +75,7 @@ public class GPUPhysics : MonoBehaviour {
 	private int m_threadGroupsPerRigidBody;
 	private int m_threadGroupsPerParticle;
 	private int m_threadGroupsPerGridCell;
-
+	private int m_deltaTimeShaderProperty;
 
 	public Vector3 gridStartPosition;
 
@@ -87,6 +90,7 @@ public class GPUPhysics : MonoBehaviour {
 		quaternionArray	= new Quaternion[total];
 		rigidBodyVelocitiesArray = new Vector3[total];
 		m_cubeScale 	= new Vector3(scale,scale,scale);
+		m_deltaTimeShaderProperty = Shader.PropertyToID("deltaTime");
 
 		const int particlesPerBody			= 8;
 		int n_particles						= particlesPerBody * total;
@@ -104,8 +108,8 @@ public class GPUPhysics : MonoBehaviour {
 			}
 		}
 		// rigid body velocities
-		positionArray[IDX(0,0,0)] = m_firstCubeLocation;
-		rigidBodyVelocitiesArray[0] = m_firstCubeVelocity;
+		positionArray[IDX(0,y-1,0)] = m_firstCubeLocation;
+		rigidBodyVelocitiesArray[IDX(0,y-1,0)] = m_firstCubeVelocity;
 
 		particleVelocities = new Vector3[n_particles];
 		particlePositions = new Vector3[n_particles];
@@ -155,6 +159,9 @@ public class GPUPhysics : MonoBehaviour {
 		m_computeShader.SetFloat("particleDiameter", scale*0.5f);
 		m_computeShader.SetFloat("springCoefficient", springCoefficient);
 		m_computeShader.SetFloat("dampingCoefficient", dampingCoefficient);
+		m_computeShader.SetFloat("frictionCoefficient", frictionCoefficient);
+		m_computeShader.SetFloat("angularFrictionCoefficient", angularFrictionCoefficient);
+		m_computeShader.SetFloat("gravityCoefficient", gravityCoefficient);
 		m_computeShader.SetFloat("tangentialCoefficient", tangentialCoefficient);
 		m_computeShader.SetFloats("gridStartPosition", new float[]{gridStartPosition.x, gridStartPosition.y, gridStartPosition.z});
 		// initialize buffers
@@ -291,7 +298,7 @@ public class GPUPhysics : MonoBehaviour {
 		m_commandBuffer.EndSample("DrawMeshInstancedIndirect");
 		#endif
 
-		Camera.main.AddCommandBuffer(CameraEvent.AfterSkybox, m_commandBuffer);
+//		Camera.main.AddCommandBuffer(CameraEvent.AfterSkybox, m_commandBuffer);
 	}
 
 
@@ -307,8 +314,8 @@ public class GPUPhysics : MonoBehaviour {
 	}
 
 	void Update () {
-		//Graphics.ExecuteCommandBuffer(m_commandBuffer);
-		//Graphics.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, m_bounds, m_bufferWithArgs);
+		m_computeShader.SetFloat(m_deltaTimeShaderProperty, Time.deltaTime);
+		Graphics.ExecuteCommandBuffer(m_commandBuffer);
 		#if (UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX) // Command Buffer DrawMeshInstancedIndirect doesnt work on my mac
 			Graphics.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, m_bounds, m_bufferWithArgs);
 		#endif
