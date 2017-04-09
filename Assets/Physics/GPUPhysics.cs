@@ -285,9 +285,11 @@ public class GPUPhysics : MonoBehaviour {
 		m_commandBuffer.DispatchCompute(m_computeShader, m_kernel_computePositionAndRotation, m_threadGroupsPerRigidBody, 1, 1);
 		m_commandBuffer.EndSample("ComputePositions");
 
+		#if !(UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX) // Command Buffer DrawMeshInstancedIndirect doesnt work on my mac
 		m_commandBuffer.BeginSample("DrawMeshInstancedIndirect");
 		m_commandBuffer.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, 0, m_bufferWithArgs);
 		m_commandBuffer.EndSample("DrawMeshInstancedIndirect");
+		#endif
 
 		Camera.main.AddCommandBuffer(CameraEvent.AfterSkybox, m_commandBuffer);
 	}
@@ -307,6 +309,9 @@ public class GPUPhysics : MonoBehaviour {
 	void Update () {
 		//Graphics.ExecuteCommandBuffer(m_commandBuffer);
 		//Graphics.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, m_bounds, m_bufferWithArgs);
+		#if (UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX) // Command Buffer DrawMeshInstancedIndirect doesnt work on my mac
+			Graphics.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, m_bounds, m_bufferWithArgs);
+		#endif
 		/*
 		m_computeShader.Dispatch(m_kernel_generateParticleValues, m_threadGroupsPerRigidBody, 1, 1);
 		m_computeShader.Dispatch(m_kernel_clearGrid, m_threadGroupsPerGridCell, 1, 1);
