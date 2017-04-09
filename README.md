@@ -22,3 +22,23 @@ LICENSE
 
 You can use this software in a commercial game, but you cannot sell this software on the Unity Asset Store or any other platform that sells software tools for developers.
 
+
+Further Improvements
+
+Build the Voxel Grid around the bounds of the simulation dynamically
+- auto apply the "renderer bounds" and the "gridDimensions"
+- does "renderer bounds" even do anything? - looks like not
+
+Eliminate the Voxel Grid Clear Step
+
+Establish the pattern for collision with solid objects
+
+Find out why the Damping force and Tangential forces described in Takahiro Harada's
+system do not seem to have good effects
+
+Determine if a better shadow pass can be constructed to speed up shadows
+
+Find out how to reliably render through CommandBuffer.DrawMeshInstancedIndirect (Unity bugs?)
+
+Optimize the thread grouping
+
