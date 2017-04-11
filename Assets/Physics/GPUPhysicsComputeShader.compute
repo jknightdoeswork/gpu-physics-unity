@@ -215,7 +215,7 @@ float3 _collisionReaction(int j_id, int i_id)
 	float3 relativePosition = particlePositions[j_id] - particlePositions[i_id]; // position of j relative to i
 	float relativePositionMagnitude = length(relativePosition);
 
-	if (relativePositionMagnitude < (particleDiameter-0.01))
+	if (relativePositionMagnitude < particleDiameter)
 	{
 		float3 relativePositionNormalized = relativePosition / relativePositionMagnitude;
 
@@ -390,8 +390,8 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 	angularForce 				+= cross(relativePosition, particleForces[p_id]);
 	debugParticleIds[p_id] = p_id;
 
-	rigidBodyVelocities[id.x] += linearForce;
-	rigidBodyAngularVelocities[id.x] += angularForce; // probably wrong
+	rigidBodyVelocities[id.x] += linearForce * deltaTime;
+	rigidBodyAngularVelocities[id.x] += angularForce * deltaTime; // probably wrong
 
 	rigidBodyVelocities[id.x] -= rigidBodyVelocities[id.x] * frictionCoefficient * deltaTime;
 
