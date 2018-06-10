@@ -28,6 +28,7 @@ public class GPUPhysics : MonoBehaviour {
 	public int gridZ;
 	public Vector3 m_firstCubeLocation; // eg
 	public Vector3 m_firstCubeVelocity;
+	public Vector3 m_firstCubeRotation;
 	// calculated
 	private int total;
 	private Vector3 m_cubeScale;
@@ -101,7 +102,7 @@ public class GPUPhysics : MonoBehaviour {
 		for (int i = 0; i < x; i++) {
 			for (int j = 0; j < y; j++) {
 				for (int k = 0; k < z; k++) {
-					positionArray[IDX(i,j,k)] = new Vector3(i*scale, j*scale, k*scale);
+					positionArray[IDX(i,j,k)] = new Vector3(i*scale, j*scale, k*scale) + new Vector3(0.5f * scale, 0.5f * scale, 0.5f * scale);
 					quaternionArray[IDX(i,j,k)] = Quaternion.identity;
 					rigidBodyVelocitiesArray[IDX(i,j,k)] = Vector3.zero;
 				}
@@ -110,7 +111,7 @@ public class GPUPhysics : MonoBehaviour {
 		// rigid body velocities
 		positionArray[IDX(0,y-1,0)] = m_firstCubeLocation;
 		rigidBodyVelocitiesArray[IDX(0,y-1,0)] = m_firstCubeVelocity;
-
+		quaternionArray[IDX(0, y - 1, 0)] = Quaternion.Euler(m_firstCubeRotation);
 		particleVelocities = new Vector3[n_particles];
 		particlePositions = new Vector3[n_particles];
 		particleRelativePositions = new Vector3[n_particles];

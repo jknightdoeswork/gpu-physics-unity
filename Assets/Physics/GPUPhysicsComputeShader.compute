@@ -166,7 +166,7 @@ void ClearGrid (uint3 id : SV_DispatchThreadID)
 int _gridIndex(int p_id) {
 	int3 gridLocation = (particlePositions[p_id] - gridStartPosition) / particleDiameter;
 	// DEBUG ONLY
-	debugParticleVoxelPositions[p_id] = gridLocation;
+	//debugParticleVoxelPositions[p_id] = gridLocation;
 	//debugParticleVoxelPositions[p_id] = int3(1,2,3);
 	return gridLocation.x + gridDimensions.x * gridLocation.y + (gridDimensions.x * gridDimensions.y * gridLocation.z);
 }
@@ -240,6 +240,19 @@ float3 _collisionReaction(int j_id, int i_id)
 	return float3(0,0,0);
 }
 
+float _collisionReactionWithGround(int i_id) {
+	if ( particlePositions[i_id].y < particleDiameter*0.5) {
+		// repulsive force (Equation 10)
+		float spring = -springCoefficient * (particleDiameter*0.5 - particlePositions[i_id].y);
+
+		// damping
+		float damping = dampingCoefficient * -particleVelocities[i_id].y;
+
+		return spring + damping;
+	}
+	return 0;
+}
+
 
 // Returns the grid location for particle p
 int3 _gridIndexThree(int p_id) {
@@ -276,7 +289,7 @@ float3 _checkGridCell(int i, int x, int y, int z) {
 	}
 	return force;
 }
-
+float gravityCoefficient;
 [numthreads(PARTICLE_THREAD_COUNT,1,1)]
 void CollisionDetection (uint3 id : SV_DispatchThreadID)
 {
@@ -312,7 +325,8 @@ void CollisionDetection (uint3 id : SV_DispatchThreadID)
 	force += _checkGridCell(i, i_gridLocation.x+1, 	i_gridLocation.y-1, 	i_gridLocation.z);
 	force += _checkGridCell(i, i_gridLocation.x+1, 	i_gridLocation.y-1, 	i_gridLocation.z+1);
 	force += _checkGridCell(i, i_gridLocation.x+1, 	i_gridLocation.y-1, 	i_gridLocation.z-1);
-
+	force.y -= gravityCoefficient;
+	force.y += _collisionReactionWithGround(i);
 	particleForces[i] = force;
 
 }
@@ -325,7 +339,7 @@ void CollisionDetection (uint3 id : SV_DispatchThreadID)
 // Input
 // RWStructuredBuffer<float3> particleForces; (defined in Collision Detection)
 // RWStructuredBuffer<float3> particleRelativePositions; (defined in Computation of Particle Values)
-float gravityCoefficient;
+
 float frictionCoefficient;
 float angularFrictionCoefficient;
 float deltaTime;
@@ -394,11 +408,11 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 	rigidBodyVelocities[id.x] += linearForce * deltaTime;
 	rigidBodyAngularVelocities[id.x] += angularForce * deltaTime; // probably wrong
 
-	rigidBodyVelocities[id.x] -= rigidBodyVelocities[id.x] * frictionCoefficient * deltaTime;
+	rigidBodyVelocities[id.x] *= frictionCoefficient;
 
-	rigidBodyAngularVelocities[id.x] -= rigidBodyAngularVelocities[id.x]*angularFrictionCoefficient* deltaTime;
+	rigidBodyAngularVelocities[id.x] *= angularFrictionCoefficient;
 
-	rigidBodyVelocities[id.x].y -= gravityCoefficient * deltaTime;
+	//rigidBodyVelocities[id.x].y -= gravityCoefficient * deltaTime;
 }
 
 /////////////////////////////
@@ -426,23 +440,35 @@ q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
 );
 }
 
+float4 qmul(float4 q1, float4 q2)
+{
+    return float4(
+        q2.xyz * q1.w + q1.xyz * q2.w + cross(q1.xyz, q2.xyz),
+        q1.w * q2.w - dot(q1.xyz, q2.xyz)
+    );
+}
+
 [numthreads(RIGID_BODY_THREAD_COUNT,1,1)]
 void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 {
 
 
 	rigidBodyPositions[id.x] 		= rigidBodyPositions[id.x] + rigidBodyVelocities[id.x] * deltaTime;
+	/*
 	if (rigidBodyPositions[id.x].y < 0) {
 		rigidBodyPositions[id.x].y = 0;
 		if (rigidBodyVelocities[id.x].y < 0) {
 			rigidBodyVelocities[id.x].y = 0;
 		}
-	}	
+	}
+	*/
 
 	// integration of angular momentum taken from
 	// http://gafferongames.com/game-physics/physics-in-3d/
+	
 	float4 torqueQuaternion = float4(0, rigidBodyAngularVelocities[id.x]);
-	float4 spin = 0.5f * multQuat(torqueQuaternion, rigidBodyQuaternions[id.x]);
+	float4 spin = 0.5f * qmul(torqueQuaternion, rigidBodyQuaternions[id.x]);
 	rigidBodyQuaternions[id.x] += spin * deltaTime;
 	rigidBodyQuaternions[id.x] = normalize(rigidBodyQuaternions[id.x]);
+	
 }
