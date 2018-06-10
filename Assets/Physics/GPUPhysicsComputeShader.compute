@@ -181,14 +181,15 @@ void PopulateGrid (uint3 id : SV_DispatchThreadID)
 	// clamp gridIndex?
 	if (gridIndex < gridMax && gridIndex > -1)
 	{
-		if (voxelCollisionGrid[gridIndex].x == -1)
-			voxelCollisionGrid[gridIndex].x = p_id;
-		else if (voxelCollisionGrid[gridIndex].y == -1)
-			voxelCollisionGrid[gridIndex].y = p_id;
-		else if (voxelCollisionGrid[gridIndex].z == -1)
-			voxelCollisionGrid[gridIndex].z = p_id;
-		else if (voxelCollisionGrid[gridIndex].w == -1)
-			voxelCollisionGrid[gridIndex].w = p_id;
+		
+		int originalValue = 0;
+		InterlockedCompareExchange(voxelCollisionGrid[gridIndex].x, -1, p_id, originalValue);
+		if (originalValue != -1)
+			InterlockedCompareExchange(voxelCollisionGrid[gridIndex].y, -1, p_id, originalValue);
+		if (originalValue != -1)
+			InterlockedCompareExchange(voxelCollisionGrid[gridIndex].z, -1, p_id, originalValue);
+		if (originalValue != -1)
+			InterlockedCompareExchange(voxelCollisionGrid[gridIndex].w, -1, p_id, originalValue);
 	}
 }
 
