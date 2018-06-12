@@ -18,7 +18,7 @@ public class GPUPhysics : MonoBehaviour {
 	public float gravityCoefficient;
 	public float frictionCoefficient;
 	public float angularFrictionCoefficient;
-
+	public float angularForceScalar;
 	public int x = 10;
 	public int y = 20;
 	public int z = 5;
@@ -164,6 +164,7 @@ public class GPUPhysics : MonoBehaviour {
 		m_computeShader.SetFloat("angularFrictionCoefficient", angularFrictionCoefficient);
 		m_computeShader.SetFloat("gravityCoefficient", gravityCoefficient);
 		m_computeShader.SetFloat("tangentialCoefficient", tangentialCoefficient);
+		m_computeShader.SetFloat("angularForceScalar", angularForceScalar);
 		m_computeShader.SetFloats("gridStartPosition", new float[]{gridStartPosition.x, gridStartPosition.y, gridStartPosition.z});
 		// initialize buffers
 
