@@ -11,7 +11,6 @@
 #pragma kernel ComputeMomenta				// Per Rigid Body	4
 #pragma kernel ComputePositionAndRotation	// Per Rigid Body	5
 
-
 // Buffers
 // rigidBodyPositions 				(RWStructuredBuffer<float3>)
 // rigidBodyQuaternions 			(RWStructuredBuffer<float4>)
@@ -60,13 +59,40 @@ RWStructuredBuffer<float3> 	particleRelativePositions;
 RWStructuredBuffer<float3> 	particleVelocities;
 //////////////////////////////
 RWStructuredBuffer<int> debugParticleIds;
+
+float4 qmul(float4 q1, float4 q2)
+{
+	return float4(
+		q2.xyz * q1.w + q1.xyz * q2.w + cross(q1.xyz, q2.xyz),
+		q1.w * q2.w - dot(q1.xyz, q2.xyz)
+		);
+}
+
 float3 rotateVectorByQuaternion(float3 vec, float4 quaternion)
 {
 	// quaternion multiplication taken from
 	// https://blog.molecular-matters.com/2013/05/24/a-faster-quaternion-vector-multiplication/
-	
+	/*
 	float3 temp = 2 * cross(quaternion.xyz, vec);
 	return vec + quaternion.w * temp + cross(quaternion.xyz, temp);
+	*/
+
+	/*
+	// Extract the vector part of the quaternion
+	float3 u = quaternion.xyz;
+
+	// Extract the scalar part of the quaternion
+	float s = quaternion.w;
+
+	// Do the math
+	return 2.0f * dot(u, vec) * u
+		+ (s*s - dot(u, u)) * vec
+		+ 2.0f * s * cross(u, vec);
+	*/
+	float4 r = quaternion;
+	float3 v = vec;
+	float4 r_c = r * float4(-1, -1, -1, 1);
+	return qmul(r, qmul(float4(v, 0), r_c)).xyz;
 }
 
 [numthreads(RIGID_BODY_THREAD_COUNT,1,1)]
@@ -440,14 +466,9 @@ q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
 );
 }
 
-float4 qmul(float4 q1, float4 q2)
-{
-    return float4(
-        q2.xyz * q1.w + q1.xyz * q2.w + cross(q1.xyz, q2.xyz),
-        q1.w * q2.w - dot(q1.xyz, q2.xyz)
-    );
-}
 
+
+float angularForceScalar;
 [numthreads(RIGID_BODY_THREAD_COUNT,1,1)]
 void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 {
@@ -467,7 +488,7 @@ void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 	// http://gafferongames.com/game-physics/physics-in-3d/
 	
 	float4 torqueQuaternion = float4(0, rigidBodyAngularVelocities[id.x]);
-	float4 spin = 0.5f * qmul(torqueQuaternion, rigidBodyQuaternions[id.x]);
+	float4 spin = angularForceScalar * -0.5f * qmul(torqueQuaternion, rigidBodyQuaternions[id.x]);
 	rigidBodyQuaternions[id.x] += spin * deltaTime;
 	rigidBodyQuaternions[id.x] = normalize(rigidBodyQuaternions[id.x]);
 	
