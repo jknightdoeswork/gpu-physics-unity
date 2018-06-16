@@ -5,16 +5,18 @@ using UnityEngine.Rendering;
 
 public class GPUPhysics : MonoBehaviour {
 
+	public bool m_debugWireframe;
+	private bool m_lastDebugWireframe;
 	// set from editor
 	public ComputeShader m_computeShader;
 	public Mesh cubeMesh {
 		get {
-			return CjLib.PrimitiveMeshFactory.BoxWireframe();
+			return m_debugWireframe ? CjLib.PrimitiveMeshFactory.BoxWireframe() : CjLib.PrimitiveMeshFactory.BoxFlatShaded();
 		}
 	}
 	public Mesh sphereMesh {
-				get {
-			return CjLib.PrimitiveMeshFactory.SphereWireframe(32,32);
+		get {
+			return CjLib.PrimitiveMeshFactory.SphereWireframe(8,8);
 		}
 	}
 	public Material cubeMaterial;
@@ -268,19 +270,13 @@ public class GPUPhysics : MonoBehaviour {
 
 		// Setup Indirect Renderer
 
-		uint indexCountPerInstance 		= cubeMesh.GetIndexCount(0);
-		uint instanceCount 				= (uint)total;
-		uint startIndexLocation 		= 0;
-		uint baseVertexLocation 		= 0;
-		uint startInstanceLocation 		= 0;
-		uint[] args = new uint[]{indexCountPerInstance, instanceCount , startIndexLocation, baseVertexLocation, startInstanceLocation};
+		
 
 		uint[] sphereArgs = new uint[]{sphereMesh.GetIndexCount(0), (uint)n_particles, 0, 0, 0};
 		m_bufferWithSphereArgs = new ComputeBuffer(1, sphereArgs.Length*sizeof(uint), ComputeBufferType.IndirectArguments);
 		m_bufferWithSphereArgs.SetData(sphereArgs);
 
-		m_bufferWithArgs = new ComputeBuffer(1, args.Length*sizeof(uint), ComputeBufferType.IndirectArguments);
-		m_bufferWithArgs.SetData(args);
+		
 
 		cubeMaterial.SetBuffer("positions", m_rigidBodyPositions);
 		cubeMaterial.SetBuffer("quaternions", m_rigidBodyQuaternions);
@@ -336,6 +332,17 @@ public class GPUPhysics : MonoBehaviour {
 	}
 
 	void Update () {
+		if (m_bufferWithArgs == null || m_debugWireframe != m_lastDebugWireframe) {
+			uint indexCountPerInstance 		= cubeMesh.GetIndexCount(0);
+			uint instanceCount 				= (uint)total;
+			uint startIndexLocation 		= 0;
+			uint baseVertexLocation 		= 0;
+			uint startInstanceLocation 		= 0;
+			uint[] args = new uint[]{indexCountPerInstance, instanceCount , startIndexLocation, baseVertexLocation, startInstanceLocation};
+			m_bufferWithArgs = new ComputeBuffer(1, args.Length*sizeof(uint), ComputeBufferType.IndirectArguments);
+			m_bufferWithArgs.SetData(args);
+			m_lastDebugWireframe = m_debugWireframe;
+		}
 		/*
 		//quaternionArray[IDX(0, y - 1, 0)] = Quaternion.Euler(m_firstCubeRotation);
 		//m_rigidBodyQuaternions.SetData(quaternionArray);
@@ -351,7 +358,8 @@ public class GPUPhysics : MonoBehaviour {
 		Graphics.ExecuteCommandBuffer(m_commandBuffer);
 //		#if (UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX) // Command Buffer DrawMeshInstancedIndirect doesnt work on my mac
 			Graphics.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, m_bounds, m_bufferWithArgs);
-			Graphics.DrawMeshInstancedIndirect(sphereMesh, 0, sphereMaterial, m_bounds, m_bufferWithSphereArgs);
+			if (m_debugWireframe)
+				Graphics.DrawMeshInstancedIndirect(sphereMesh, 0, sphereMaterial, m_bounds, m_bufferWithSphereArgs);
 //		#endif
 		/*
 		m_computeShader.Dispatch(m_kernel_generateParticleValues, m_threadGroupsPerRigidBody, 1, 1);
@@ -379,6 +387,7 @@ public class GPUPhysics : MonoBehaviour {
 
 		//Graphics.DrawMeshInstanced(cubeMesh, 0, cubeMaterial, m_matrices, total, null, UnityEngine.Rendering.ShadowCastingMode.On, true, 0, Camera.main);
 		//Graphics.ExecuteCommandBuffer(m_commandBuffer);
+		
 	}
 
 	void OnDestroy() {
