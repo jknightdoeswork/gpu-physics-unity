@@ -364,8 +364,10 @@ void CollisionDetection (uint3 id : SV_DispatchThreadID)
 	force += _checkGridCell(i, i_gridLocation.x+1, 	i_gridLocation.y-1, 	i_gridLocation.z);
 	force += _checkGridCell(i, i_gridLocation.x+1, 	i_gridLocation.y-1, 	i_gridLocation.z+1);
 	force += _checkGridCell(i, i_gridLocation.x+1, 	i_gridLocation.y-1, 	i_gridLocation.z-1);
+	
 	force.y -= gravityCoefficient;
 	force.y += _collisionReactionWithGround(i);
+
 	particleForces[i] = force;
 }
 
@@ -498,10 +500,9 @@ void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 
 	// integration of angular momentum taken from
 	// http://gafferongames.com/game-physics/physics-in-3d/
-	
-	float4 torqueQuaternion = float4(0, rigidBodyAngularVelocities[id.x]);
-	float4 spin = angularForceScalar * 0.5f * quat_concat(torqueQuaternion, rigidBodyQuaternions[id.x]);
-	rigidBodyQuaternions[id.x] += spin * deltaTime;
-	rigidBodyQuaternions[id.x] = normalize(rigidBodyQuaternions[id.x]);
-	
+	float4 q = rigidBodyQuaternions[id.x];
+	float4 omega = float4(angularForceScalar*0.5f*rigidBodyAngularVelocities[id.x], 0);
+	float4 p = quat_concat(omega, q);
+	rigidBodyQuaternions[id.x] = normalize(q+p*deltaTime);
+	//rigidBodyQuaternions[id.x] = normalize(float4(q.x + p.x*deltaTime, q.y + p.y*deltaTime, q.z + p.z*deltaTime, q.w + p.w*deltaTime));	
 }

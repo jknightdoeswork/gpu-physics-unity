@@ -16,7 +16,7 @@ public class GPUPhysics : MonoBehaviour {
 	}
 	public Mesh sphereMesh {
 		get {
-			return CjLib.PrimitiveMeshFactory.SphereWireframe(8,8);
+			return CjLib.PrimitiveMeshFactory.SphereFlatShaded(16,16);
 		}
 	}
 	public Material cubeMaterial;
