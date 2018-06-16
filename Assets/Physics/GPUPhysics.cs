@@ -7,8 +7,18 @@ public class GPUPhysics : MonoBehaviour {
 
 	// set from editor
 	public ComputeShader m_computeShader;
-	public Mesh cubeMesh;
+	public Mesh cubeMesh {
+		get {
+			return CjLib.PrimitiveMeshFactory.BoxWireframe();
+		}
+	}
+	public Mesh sphereMesh {
+				get {
+			return CjLib.PrimitiveMeshFactory.SphereWireframe(32,32);
+		}
+	}
 	public Material cubeMaterial;
+	public Material sphereMaterial;
 	public Bounds m_bounds;
 
 	public float scale;
@@ -29,6 +39,9 @@ public class GPUPhysics : MonoBehaviour {
 	public Vector3 m_firstCubeLocation; // eg
 	public Vector3 m_firstCubeVelocity;
 	public Vector3 m_firstCubeRotation;
+	// debug
+	public bool m_debugRender;
+	
 	// calculated
 	private int total;
 	private Vector3 m_cubeScale;
@@ -81,9 +94,9 @@ public class GPUPhysics : MonoBehaviour {
 	public Vector3 gridStartPosition;
 
 	private ComputeBuffer m_bufferWithArgs;
-
+	private ComputeBuffer m_bufferWithSphereArgs;
 	void Start () {
-	Application.targetFrameRate = 300;
+		Application.targetFrameRate = 300;
 		// Create initial positions
 		total 			= x*y*z;
 		m_matrices 		= new Matrix4x4[total];
@@ -128,7 +141,7 @@ public class GPUPhysics : MonoBehaviour {
 		m_kernel_computePositionAndRotation		= m_computeShader.FindKernel("ComputePositionAndRotation");
 
 		// Count Thread Groups
-		m_threadGroupsPerRigidBody				= Mathf.CeilToInt(total / 2f);
+		m_threadGroupsPerRigidBody				= Mathf.CeilToInt(total);
 		m_threadGroupsPerParticle				= Mathf.CeilToInt(n_particles / 8f);
 		m_threadGroupsPerGridCell				= Mathf.CeilToInt((gridX*gridY*gridZ) / 8f);
 
@@ -254,6 +267,7 @@ public class GPUPhysics : MonoBehaviour {
 
 
 		// Setup Indirect Renderer
+
 		uint indexCountPerInstance 		= cubeMesh.GetIndexCount(0);
 		uint instanceCount 				= (uint)total;
 		uint startIndexLocation 		= 0;
@@ -261,12 +275,17 @@ public class GPUPhysics : MonoBehaviour {
 		uint startInstanceLocation 		= 0;
 		uint[] args = new uint[]{indexCountPerInstance, instanceCount , startIndexLocation, baseVertexLocation, startInstanceLocation};
 
+		uint[] sphereArgs = new uint[]{sphereMesh.GetIndexCount(0), (uint)n_particles, 0, 0, 0};
+		m_bufferWithSphereArgs = new ComputeBuffer(1, sphereArgs.Length*sizeof(uint), ComputeBufferType.IndirectArguments);
+		m_bufferWithSphereArgs.SetData(sphereArgs);
+
 		m_bufferWithArgs = new ComputeBuffer(1, args.Length*sizeof(uint), ComputeBufferType.IndirectArguments);
 		m_bufferWithArgs.SetData(args);
 
 		cubeMaterial.SetBuffer("positions", m_rigidBodyPositions);
 		cubeMaterial.SetBuffer("quaternions", m_rigidBodyQuaternions);
-
+		sphereMaterial.SetBuffer("positions",m_particlePositions);
+		sphereMaterial.SetVector("scale", new Vector4(0.25f, 0.25f, 0.25f, 1.0f));
 
 		// Setup Command Buffer
 		m_commandBuffer = new CommandBuffer();
@@ -317,10 +336,22 @@ public class GPUPhysics : MonoBehaviour {
 	}
 
 	void Update () {
+		/*
+		//quaternionArray[IDX(0, y - 1, 0)] = Quaternion.Euler(m_firstCubeRotation);
+		//m_rigidBodyQuaternions.SetData(quaternionArray);
+		//positionArray[IDX(0, y -1, 0)] = m_firstCubeLocation;
+		//m_rigidBodyPositions.SetData(positionArray);
+		//positionArray[IDX(0,y-1,0)] = m_firstCubeLocation;
+		int idx = IDX(0,y-1,0);
+		m_rigidBodyQuaternions.GetData(quaternionArray);
+		m_rigidBodyPositions.GetData(positionArray);
+		m_particlePositions.GetData(particlePositions);
+		*/
 		m_computeShader.SetFloat(m_deltaTimeShaderProperty, Time.deltaTime);
 		Graphics.ExecuteCommandBuffer(m_commandBuffer);
 //		#if (UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX) // Command Buffer DrawMeshInstancedIndirect doesnt work on my mac
 			Graphics.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, m_bounds, m_bufferWithArgs);
+			Graphics.DrawMeshInstancedIndirect(sphereMesh, 0, sphereMaterial, m_bounds, m_bufferWithSphereArgs);
 //		#endif
 		/*
 		m_computeShader.Dispatch(m_kernel_generateParticleValues, m_threadGroupsPerRigidBody, 1, 1);

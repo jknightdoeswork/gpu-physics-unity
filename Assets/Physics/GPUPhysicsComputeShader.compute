@@ -1,7 +1,8 @@
 ﻿// Each #kernel tells which function to compile; you can have many kernels
 #define CLEAR_GRID_THREAD_COUNT 8
-#define RIGID_BODY_THREAD_COUNT 2
+#define RIGID_BODY_THREAD_COUNT 1
 #define PARTICLE_THREAD_COUNT 8
+#include "Quaternion.cginc"
 
 // Kernels
 #pragma kernel GenerateParticleValues 		// Per Rigid Body	0
@@ -60,6 +61,7 @@ RWStructuredBuffer<float3> 	particleVelocities;
 //////////////////////////////
 RWStructuredBuffer<int> debugParticleIds;
 
+
 float4 qmul(float4 q1, float4 q2)
 {
 	return float4(
@@ -68,7 +70,7 @@ float4 qmul(float4 q1, float4 q2)
 		);
 }
 
-float3 rotateVectorByQuaternion(float3 vec, float4 quaternion)
+float3 rotateVectorByQuaternion(float4 quaternion, float3 vec)
 {
 	// quaternion multiplication taken from
 	// https://blog.molecular-matters.com/2013/05/24/a-faster-quaternion-vector-multiplication/
@@ -89,10 +91,21 @@ float3 rotateVectorByQuaternion(float3 vec, float4 quaternion)
 		+ (s*s - dot(u, u)) * vec
 		+ 2.0f * s * cross(u, vec);
 	*/
+	
+	/*
 	float4 r = quaternion;
 	float3 v = vec;
 	float4 r_c = r * float4(-1, -1, -1, 1);
 	return qmul(r, qmul(float4(v, 0), r_c)).xyz;
+	*/
+	/*
+	float4 r = quaternion;
+	float3 v = vec;
+	float4 r_c = r * float4(-1, -1, -1, 1);
+	return quat_concat(r, quat_concat(float4(v, 0), r_c)).xyz;
+	*/
+
+	return quat_mul(quaternion, vec);
 }
 
 [numthreads(RIGID_BODY_THREAD_COUNT,1,1)]
@@ -105,56 +118,56 @@ void GenerateParticleValues (uint3 id : SV_DispatchThreadID)
 
 	// particle 1
 	int p_id = id.x * particlesPerRigidBody;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(particleInitialRelativePositions[p_id], rigidBodyQuaternion);
+	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
 	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
 	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
 	//debugParticleIds[p_id] = p_id;
 
 	// particle 2
 	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(particleInitialRelativePositions[p_id], rigidBodyQuaternion);
+	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
 	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
 	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
 	//debugParticleIds[p_id] = p_id;
 
 	// particle 3
 	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(particleInitialRelativePositions[p_id], rigidBodyQuaternion);
+	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
 	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
 	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
 	//debugParticleIds[p_id] = p_id;
 
 	// particle 4
 	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(particleInitialRelativePositions[p_id], rigidBodyQuaternion);
+	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
 	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
  	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
  	//debugParticleIds[p_id] = p_id;
 
 	// particle 5
  	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(particleInitialRelativePositions[p_id], rigidBodyQuaternion);
+	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
 	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
  	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
  	//debugParticleIds[p_id] = p_id;
 
  	// particle 6
  	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(particleInitialRelativePositions[p_id], rigidBodyQuaternion);
+	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
 	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
  	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
  	//debugParticleIds[p_id] = p_id;
 
  	// particle 7
  	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(particleInitialRelativePositions[p_id], rigidBodyQuaternion);
+	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
 	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
  	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
  	//debugParticleIds[p_id] = p_id;
 
  	// particle 8
  	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(particleInitialRelativePositions[p_id], rigidBodyQuaternion);
+	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
 	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
  	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
  	//debugParticleIds[p_id] = p_id;
@@ -354,7 +367,6 @@ void CollisionDetection (uint3 id : SV_DispatchThreadID)
 	force.y -= gravityCoefficient;
 	force.y += _collisionReactionWithGround(i);
 	particleForces[i] = force;
-
 }
 
 ////////////////////////////
@@ -488,7 +500,7 @@ void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 	// http://gafferongames.com/game-physics/physics-in-3d/
 	
 	float4 torqueQuaternion = float4(0, rigidBodyAngularVelocities[id.x]);
-	float4 spin = angularForceScalar * -0.5f * qmul(torqueQuaternion, rigidBodyQuaternions[id.x]);
+	float4 spin = angularForceScalar * 0.5f * quat_concat(torqueQuaternion, rigidBodyQuaternions[id.x]);
 	rigidBodyQuaternions[id.x] += spin * deltaTime;
 	rigidBodyQuaternions[id.x] = normalize(rigidBodyQuaternions[id.x]);
 	
