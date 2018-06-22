@@ -16,11 +16,17 @@ public class GPUPhysics : MonoBehaviour {
 	}
 	public Mesh sphereMesh {
 		get {
-			return CjLib.PrimitiveMeshFactory.SphereFlatShaded(16,16);
+			return CjLib.PrimitiveMeshFactory.SphereWireframe(6,6);
+		}
+	}
+	public Mesh lineMesh {
+		get {
+			return CjLib.PrimitiveMeshFactory.Line(Vector3.zero, new Vector3(1.0f,1.0f,1.0f));
 		}
 	}
 	public Material cubeMaterial;
 	public Material sphereMaterial;
+	public Material lineMaterial;
 	public Bounds m_bounds;
 
 	public float scale;
@@ -97,6 +103,8 @@ public class GPUPhysics : MonoBehaviour {
 
 	private ComputeBuffer m_bufferWithArgs;
 	private ComputeBuffer m_bufferWithSphereArgs;
+	private ComputeBuffer m_bufferWithLineArgs;
+
 	void Start () {
 		Application.targetFrameRate = 300;
 		// Create initial positions
@@ -276,12 +284,17 @@ public class GPUPhysics : MonoBehaviour {
 		m_bufferWithSphereArgs = new ComputeBuffer(1, sphereArgs.Length*sizeof(uint), ComputeBufferType.IndirectArguments);
 		m_bufferWithSphereArgs.SetData(sphereArgs);
 
+		uint[] lineArgs = new uint[]{lineMesh.GetIndexCount(0), (uint)n_particles, 0, 0, 0};
+		m_bufferWithLineArgs = new ComputeBuffer(1, lineArgs.Length*sizeof(uint), ComputeBufferType.IndirectArguments);
+		m_bufferWithLineArgs.SetData(lineArgs);
 		
 
 		cubeMaterial.SetBuffer("positions", m_rigidBodyPositions);
 		cubeMaterial.SetBuffer("quaternions", m_rigidBodyQuaternions);
 		sphereMaterial.SetBuffer("positions",m_particlePositions);
 		sphereMaterial.SetVector("scale", new Vector4(0.25f, 0.25f, 0.25f, 1.0f));
+		lineMaterial.SetBuffer("positions", m_particlePositions);
+		lineMaterial.SetBuffer("vectors", m_particleForces);
 
 		// Setup Command Buffer
 		m_commandBuffer = new CommandBuffer();
@@ -358,8 +371,10 @@ public class GPUPhysics : MonoBehaviour {
 		Graphics.ExecuteCommandBuffer(m_commandBuffer);
 //		#if (UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX) // Command Buffer DrawMeshInstancedIndirect doesnt work on my mac
 			Graphics.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, m_bounds, m_bufferWithArgs);
-			if (m_debugWireframe)
-				Graphics.DrawMeshInstancedIndirect(sphereMesh, 0, sphereMaterial, m_bounds, m_bufferWithSphereArgs);
+			if (m_debugWireframe) {
+				//Graphics.DrawMeshInstancedIndirect(sphereMesh, 0, sphereMaterial, m_bounds, m_bufferWithSphereArgs);
+				Graphics.DrawMeshInstancedIndirect(lineMesh, 0, lineMaterial, m_bounds, m_bufferWithLineArgs);
+			}
 //		#endif
 		/*
 		m_computeShader.Dispatch(m_kernel_generateParticleValues, m_threadGroupsPerRigidBody, 1, 1);
