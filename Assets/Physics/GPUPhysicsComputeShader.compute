@@ -62,49 +62,8 @@ RWStructuredBuffer<float3> 	particleVelocities;
 RWStructuredBuffer<int> debugParticleIds;
 
 
-float4 qmul(float4 q1, float4 q2)
-{
-	return float4(
-		q2.xyz * q1.w + q1.xyz * q2.w + cross(q1.xyz, q2.xyz),
-		q1.w * q2.w - dot(q1.xyz, q2.xyz)
-		);
-}
-
 float3 rotateVectorByQuaternion(float4 quaternion, float3 vec)
 {
-	// quaternion multiplication taken from
-	// https://blog.molecular-matters.com/2013/05/24/a-faster-quaternion-vector-multiplication/
-	/*
-	float3 temp = 2 * cross(quaternion.xyz, vec);
-	return vec + quaternion.w * temp + cross(quaternion.xyz, temp);
-	*/
-
-	/*
-	// Extract the vector part of the quaternion
-	float3 u = quaternion.xyz;
-
-	// Extract the scalar part of the quaternion
-	float s = quaternion.w;
-
-	// Do the math
-	return 2.0f * dot(u, vec) * u
-		+ (s*s - dot(u, u)) * vec
-		+ 2.0f * s * cross(u, vec);
-	*/
-	
-	/*
-	float4 r = quaternion;
-	float3 v = vec;
-	float4 r_c = r * float4(-1, -1, -1, 1);
-	return qmul(r, qmul(float4(v, 0), r_c)).xyz;
-	*/
-	/*
-	float4 r = quaternion;
-	float3 v = vec;
-	float4 r_c = r * float4(-1, -1, -1, 1);
-	return quat_concat(r, quat_concat(float4(v, 0), r_c)).xyz;
-	*/
-
 	return quat_mul(quaternion, vec);
 }
 
@@ -210,8 +169,6 @@ int _gridIndex(int p_id) {
 	return gridLocation.x + gridDimensions.x * gridLocation.y + (gridDimensions.x * gridDimensions.y * gridLocation.z);
 }
 
-
-
 [numthreads(PARTICLE_THREAD_COUNT,1,1)]
 void PopulateGrid (uint3 id : SV_DispatchThreadID)
 {
@@ -232,7 +189,6 @@ void PopulateGrid (uint3 id : SV_DispatchThreadID)
 	}
 }
 
-
 /////////////////////////
 // Collision Detection //
 /////////////////////////
@@ -247,7 +203,6 @@ float dampingCoefficient;
 float tangentialCoefficient;
 // Output
 RWStructuredBuffer<float3> particleForces;
-
 float3 _collisionReaction(int j_id, int i_id)
 {
 	
@@ -292,7 +247,6 @@ float _collisionReactionWithGround(int i_id) {
 	return 0;
 }
 
-
 // Returns the grid location for particle p
 int3 _gridIndexThree(int p_id) {
 	return (particlePositions[p_id] - gridStartPosition) / particleDiameter;
@@ -328,6 +282,7 @@ float3 _checkGridCell(int i, int x, int y, int z) {
 	}
 	return force;
 }
+
 float gravityCoefficient;
 [numthreads(PARTICLE_THREAD_COUNT,1,1)]
 void CollisionDetection (uint3 id : SV_DispatchThreadID)
@@ -468,26 +423,10 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 // RWStructuredBuffer<float3> rigidBodyPosition; // defined in Computation Of Particle Values
 // RWStructuredBuffer<float3> rigidBodyQuaternions;
 
-// multiply quaternion taken from
-// https://twistedpairdevelopment.wordpress.com/2013/02/11/rotating-a-vector-by-a-quaternion-in-glsl/
-float4 multQuat(float4 q1, float4 q2)
-{
-return float4(
-q1.w * q2.x + q1.x * q2.w + q1.z * q2.y - q1.y * q2.z,
-q1.w * q2.y + q1.y * q2.w + q1.x * q2.z - q1.z * q2.x,
-q1.w * q2.z + q1.z * q2.w + q1.y * q2.x - q1.x * q2.y,
-q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
-);
-}
-
-
-
 float angularForceScalar;
 [numthreads(RIGID_BODY_THREAD_COUNT,1,1)]
 void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 {
-
-
 	rigidBodyPositions[id.x] 		= rigidBodyPositions[id.x] + rigidBodyVelocities[id.x] * deltaTime;
 	/*
 	if (rigidBodyPositions[id.x].y < 0) {
@@ -503,6 +442,5 @@ void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 	float4 q = rigidBodyQuaternions[id.x];
 	float4 omega = float4(angularForceScalar*0.5f*rigidBodyAngularVelocities[id.x], 0);
 	float4 p = quat_concat(omega, q);
-	rigidBodyQuaternions[id.x] = normalize(q+p*deltaTime);
-	//rigidBodyQuaternions[id.x] = normalize(float4(q.x + p.x*deltaTime, q.y + p.y*deltaTime, q.z + p.z*deltaTime, q.w + p.w*deltaTime));	
+	rigidBodyQuaternions[id.x] = normalize(q+p*deltaTime);	
 }
