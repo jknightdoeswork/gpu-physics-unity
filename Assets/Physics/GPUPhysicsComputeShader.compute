@@ -1,6 +1,6 @@
 ﻿// Each #kernel tells which function to compile; you can have many kernels
 #define CLEAR_GRID_THREAD_COUNT 8
-#define RIGID_BODY_THREAD_COUNT 1
+#define RIGID_BODY_THREAD_COUNT 8
 #define PARTICLE_THREAD_COUNT 8
 #include "Quaternion.cginc"
 
@@ -34,7 +34,9 @@
 // dampingCoefficient 				(float) (Equation 11)
 // tangentialCoefficient 			(float) (Equation 12)
 #define particlesPerRigidBody 8;
-
+float deltaTime;
+float particleMass;
+float4x4 inertialTensor;
 
 
 //////////////////////////////
@@ -216,7 +218,6 @@ float3 _collisionReaction(int j_id, int i_id)
 
 		// repulsive force (Equation 10)
 		float3 repulsiveForce = springCoefficient * (particleDiameter - relativePositionMagnitude) * relativePositionNormalized;
-
 		// damping force (Equation 11)
 		// https://www2.msm.ctw.utwente.nl/sluding/PAPERS/luding_alert2008.pdf 
 		// says that the damping force acts along the normal....
@@ -238,7 +239,6 @@ float _collisionReactionWithGround(int i_id) {
 	if ( particlePositions[i_id].y < particleDiameter*0.5) {
 		// repulsive force (Equation 10)
 		float spring = -springCoefficient * (particleDiameter*0.5 - particlePositions[i_id].y);
-
 		// damping
 		float damping = dampingCoefficient * -particleVelocities[i_id].y;
 
@@ -337,7 +337,7 @@ void CollisionDetection (uint3 id : SV_DispatchThreadID)
 
 float frictionCoefficient;
 float angularFrictionCoefficient;
-float deltaTime;
+
 // Output
 //RWStructuredBuffer<float3> rigidBodyAngularVelocities; // defined in Computation Of Particle Values
 //RWStructuredBuffer<float3> rigidBodyVelocities; // defined in Computation Of Particle Values
@@ -400,8 +400,8 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 	angularForce 				+= cross(relativePosition, particleForces[p_id]);
 	debugParticleIds[p_id] = p_id;
 
-	rigidBodyVelocities[id.x] += linearForce * deltaTime;
-	rigidBodyAngularVelocities[id.x] += angularForce * deltaTime; // probably wrong
+	rigidBodyVelocities[id.x] += linearForce;
+	rigidBodyAngularVelocities[id.x] += angularForce; // probably wrong
 
 	rigidBodyVelocities[id.x] *= frictionCoefficient;
 
@@ -437,10 +437,11 @@ void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 	}
 	*/
 
-	// integration of angular momentum taken from
-	// http://gafferongames.com/game-physics/physics-in-3d/
+	// integration of angular velocity taken from
+	// "Essential Mathematics for Games and Interactive Applications"
+	// by James Van Verth and Lars Bishop
+	float4 omega = float4(0, rigidBodyAngularVelocities[id.x]);
 	float4 q = rigidBodyQuaternions[id.x];
-	float4 omega = float4(angularForceScalar*0.5f*rigidBodyAngularVelocities[id.x], 0);
-	float4 p = quat_concat(omega, q);
-	rigidBodyQuaternions[id.x] = normalize(q+p*deltaTime);	
+	rigidBodyQuaternions[id.x] = q + deltaTime*(0.5*quat_concat(omega,q));
+
 }

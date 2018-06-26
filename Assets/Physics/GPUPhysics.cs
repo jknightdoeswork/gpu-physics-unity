@@ -28,7 +28,7 @@ public class GPUPhysics : MonoBehaviour {
 	public Material sphereMaterial;
 	public Material lineMaterial;
 	public Bounds m_bounds;
-
+	public float m_cubeMass;
 	public float scale;
 	public float springCoefficient;
 	public float dampingCoefficient;
@@ -151,7 +151,7 @@ public class GPUPhysics : MonoBehaviour {
 		m_kernel_computePositionAndRotation		= m_computeShader.FindKernel("ComputePositionAndRotation");
 
 		// Count Thread Groups
-		m_threadGroupsPerRigidBody				= Mathf.CeilToInt(total);
+		m_threadGroupsPerRigidBody				= Mathf.CeilToInt(total / 8.0f);
 		m_threadGroupsPerParticle				= Mathf.CeilToInt(n_particles / 8f);
 		m_threadGroupsPerGridCell				= Mathf.CeilToInt((gridX*gridY*gridZ) / 8f);
 
@@ -189,14 +189,25 @@ public class GPUPhysics : MonoBehaviour {
 		m_computeShader.SetFloat("tangentialCoefficient", tangentialCoefficient);
 		m_computeShader.SetFloat("angularForceScalar", angularForceScalar);
 		m_computeShader.SetFloats("gridStartPosition", new float[]{gridStartPosition.x, gridStartPosition.y, gridStartPosition.z});
+		m_computeShader.SetFloat("particleMass", m_cubeMass/particlesPerBody);
+
+		// Inertial tensor of a cube formula taken from textbook:
+		// "Essential Mathematics for Games and Interactive Applications"
+		// by James Van Verth and Lars Bishop
+		float twoDimSq = 2.0f * (scale*scale);
+		float inertialTensorFactor = m_cubeMass * 1.0f/12.0f * twoDimSq;
+		float[] inertialTensor = {
+			inertialTensorFactor, 0.0f,	0.0f,
+			0.0f, inertialTensorFactor, 0.0f,
+			0.0f, 0.0f, inertialTensorFactor
+		};
+		m_computeShader.SetFloats("inertialTensor", inertialTensor);
+
 		// initialize buffers
-
-
 		// initial relative positions
 		// super dependent on 8/rigid body
 		float quarterScale = scale * 0.25f;
 		particleInitialRelativePositions = new Vector3[n_particles];
-
 		Vector3[] particleInitialsSmall = new Vector3[particlesPerBody];
 		particleInitialsSmall[0] = new Vector3(quarterScale, 	quarterScale, 	quarterScale);
 		particleInitialsSmall[1] = new Vector3(-quarterScale, 	quarterScale, 	quarterScale);
@@ -265,21 +276,7 @@ public class GPUPhysics : MonoBehaviour {
 		m_computeShader.SetBuffer(m_kernel_computePositionAndRotation, "rigidBodyPositions", m_rigidBodyPositions);
 		m_computeShader.SetBuffer(m_kernel_computePositionAndRotation, "rigidBodyQuaternions", m_rigidBodyQuaternions);
 
-
-
-		//GetComponent<InstancedIndirectRenderingTest>().InitializeRenderer(total, cubeMesh, m_rigidBodyPositions, m_rigidBodyQuaternions);
-		//m_computeShader.Dispatch(m_kernel_generateParticleValues, m_threadGroupsPerRigidBody, 1, 1);
-		//m_computeShader.Dispatch(m_kernel_clearGrid, m_threadGroupsPerGridCell, 1, 1);
-		//m_computeShader.Dispatch(m_kernel_populateGrid, m_threadGroupsPerParticle,1, 1);
-		//m_computeShader.Dispatch(m_kernel_collisionDetection, m_threadGroupsPerParticle, 1, 1);
-		//m_computeShader.Dispatch(m_kernel_computeMomenta, m_threadGroupsPerRigidBody, 1, 1);
-		//m_computeShader.Dispatch(m_kernel_computePositionAndRotation, m_threadGroupsPerRigidBody, 1, 1);
-
-
 		// Setup Indirect Renderer
-
-		
-
 		uint[] sphereArgs = new uint[]{sphereMesh.GetIndexCount(0), (uint)n_particles, 0, 0, 0};
 		m_bufferWithSphereArgs = new ComputeBuffer(1, sphereArgs.Length*sizeof(uint), ComputeBufferType.IndirectArguments);
 		m_bufferWithSphereArgs.SetData(sphereArgs);
@@ -287,14 +284,13 @@ public class GPUPhysics : MonoBehaviour {
 		uint[] lineArgs = new uint[]{lineMesh.GetIndexCount(0), (uint)n_particles, 0, 0, 0};
 		m_bufferWithLineArgs = new ComputeBuffer(1, lineArgs.Length*sizeof(uint), ComputeBufferType.IndirectArguments);
 		m_bufferWithLineArgs.SetData(lineArgs);
-		
 
 		cubeMaterial.SetBuffer("positions", m_rigidBodyPositions);
 		cubeMaterial.SetBuffer("quaternions", m_rigidBodyQuaternions);
 		sphereMaterial.SetBuffer("positions",m_particlePositions);
 		sphereMaterial.SetVector("scale", new Vector4(0.25f, 0.25f, 0.25f, 1.0f));
 		lineMaterial.SetBuffer("positions", m_particlePositions);
-		lineMaterial.SetBuffer("vectors", m_particleForces);
+		lineMaterial.SetBuffer("vectors", m_particleVelocities);
 
 		// Setup Command Buffer
 		m_commandBuffer = new CommandBuffer();
@@ -322,6 +318,7 @@ public class GPUPhysics : MonoBehaviour {
 		m_commandBuffer.DispatchCompute(m_computeShader, m_kernel_computePositionAndRotation, m_threadGroupsPerRigidBody, 1, 1);
 		m_commandBuffer.EndSample("ComputePositions");
 
+		// rendering in command buffer - doesnt work for now seems like a unity bug
 		#if !(UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX) // Command Buffer DrawMeshInstancedIndirect doesnt work on my mac
 		// rendering from command buffer via update isnt working so disabling this is necessary for delta time use
 //		m_commandBuffer.BeginSample("DrawMeshInstancedIndirect");
@@ -331,8 +328,6 @@ public class GPUPhysics : MonoBehaviour {
 
 //		Camera.main.AddCommandBuffer(CameraEvent.AfterSkybox, m_commandBuffer);
 	}
-
-
 
 	private void SetMatrices(Vector3[] positions, Quaternion[] quaternions) {
 		for (int i = 0; i < positions.Length; i++) {
