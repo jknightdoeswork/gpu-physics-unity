@@ -36,7 +36,8 @@
 #define particlesPerRigidBody 8;
 float deltaTime;
 float particleMass;
-float4x4 inertialTensor;
+float3x3 inertialTensor;
+float3x3 inverseInertialTensor;
 
 
 //////////////////////////////
@@ -400,12 +401,16 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 	angularForce 				+= cross(relativePosition, particleForces[p_id]);
 	debugParticleIds[p_id] = p_id;
 
-	rigidBodyVelocities[id.x] += linearForce;
-	rigidBodyAngularVelocities[id.x] += angularForce; // probably wrong
 
 	rigidBodyVelocities[id.x] *= frictionCoefficient;
 
 	rigidBodyAngularVelocities[id.x] *= angularFrictionCoefficient;
+
+	float cubeMass = particleMass * 8;
+	rigidBodyVelocities[id.x] += deltaTime * linearForce/cubeMass;
+	rigidBodyAngularVelocities[id.x] += deltaTime * mul(inverseInertialTensor, angularForce); // probably wrong
+
+
 
 	//rigidBodyVelocities[id.x].y -= gravityCoefficient * deltaTime;
 }
@@ -442,6 +447,6 @@ void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 	// by James Van Verth and Lars Bishop
 	float4 omega = float4(0, rigidBodyAngularVelocities[id.x]);
 	float4 q = rigidBodyQuaternions[id.x];
-	rigidBodyQuaternions[id.x] = q + deltaTime*(0.5*quat_concat(omega,q));
+	rigidBodyQuaternions[id.x] = normalize(q + deltaTime * (0.5*quat_concat(omega, q)));
 
 }

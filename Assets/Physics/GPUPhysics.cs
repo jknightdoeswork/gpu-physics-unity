@@ -16,12 +16,12 @@ public class GPUPhysics : MonoBehaviour {
 	}
 	public Mesh sphereMesh {
 		get {
-			return CjLib.PrimitiveMeshFactory.SphereWireframe(6,6);
+			return CjLib.PrimitiveMeshFactory.SphereWireframe(6, 6);
 		}
 	}
 	public Mesh lineMesh {
 		get {
-			return CjLib.PrimitiveMeshFactory.Line(Vector3.zero, new Vector3(1.0f,1.0f,1.0f));
+			return CjLib.PrimitiveMeshFactory.Line(Vector3.zero, new Vector3(1.0f, 1.0f, 1.0f));
 		}
 	}
 	public Material cubeMaterial;
@@ -49,43 +49,43 @@ public class GPUPhysics : MonoBehaviour {
 	public Vector3 m_firstCubeRotation;
 	// debug
 	public bool m_debugRender;
-	
+
 	// calculated
 	private int total;
 	private Vector3 m_cubeScale;
 	private Matrix4x4[] m_matrices;
 
 	// data
-	private ComputeBuffer m_rigidBodyPositions;					// float3
-	private ComputeBuffer m_rigidBodyQuaternions;				// float4
-	private ComputeBuffer m_rigidBodyAngularVelocities;			// float3
-	private ComputeBuffer m_rigidBodyVelocities;				// float3
+	private ComputeBuffer m_rigidBodyPositions;                 // float3
+	private ComputeBuffer m_rigidBodyQuaternions;               // float4
+	private ComputeBuffer m_rigidBodyAngularVelocities;         // float3
+	private ComputeBuffer m_rigidBodyVelocities;                // float3
 
-	private ComputeBuffer m_particleInitialRelativePositions; 	// float3
-	private ComputeBuffer m_particlePositions;					// float3
-	private ComputeBuffer m_particleRelativePositions;			// float3
-	private ComputeBuffer m_particleVelocities;					// float3
-	private ComputeBuffer m_particleForces;						// float3
+	private ComputeBuffer m_particleInitialRelativePositions;   // float3
+	private ComputeBuffer m_particlePositions;                  // float3
+	private ComputeBuffer m_particleRelativePositions;          // float3
+	private ComputeBuffer m_particleVelocities;                 // float3
+	private ComputeBuffer m_particleForces;                     // float3
 
 
-	private ComputeBuffer m_debugParticleIds;					// int
-	private ComputeBuffer m_debugParticleVoxelPositions;		// int3 // the per particle grid locations
-	private ComputeBuffer m_voxelCollisionGrid;					// int4
+	private ComputeBuffer m_debugParticleIds;                   // int
+	private ComputeBuffer m_debugParticleVoxelPositions;        // int3 // the per particle grid locations
+	private ComputeBuffer m_voxelCollisionGrid;                 // int4
 
 	private CommandBuffer m_commandBuffer;
 
-	public Vector3[] 		positionArray;							// cpu->matrix
-	public Quaternion[] 	quaternionArray;						// cpu->matrix
-	public Vector3[]		particleForcesArray;
-	public Vector3[]		particleVelocities;
-	public Vector3[]		rigidBodyVelocitiesArray;
-	public Vector3[]		particlePositions;
-	public Vector3[]		particleRelativePositions;
-	public Vector3[] 		particleInitialRelativePositions;
+	public Vector3[] positionArray;                         // cpu->matrix
+	public Quaternion[] quaternionArray;                        // cpu->matrix
+	public Vector3[] particleForcesArray;
+	public Vector3[] particleVelocities;
+	public Vector3[] rigidBodyVelocitiesArray;
+	public Vector3[] particlePositions;
+	public Vector3[] particleRelativePositions;
+	public Vector3[] particleInitialRelativePositions;
 
-	public int[]			voxelGridArray;
-	public int[]			particleVoxelPositionsArray;
-	public int[]			debugParticleIds;
+	public int[] voxelGridArray;
+	public int[] particleVoxelPositionsArray;
+	public int[] debugParticleIds;
 	private int m_kernel_generateParticleValues;
 	private int m_kernel_clearGrid;
 	private int m_kernel_populateGrid;
@@ -105,35 +105,35 @@ public class GPUPhysics : MonoBehaviour {
 	private ComputeBuffer m_bufferWithSphereArgs;
 	private ComputeBuffer m_bufferWithLineArgs;
 
-	void Start () {
+	void Start() {
 		Application.targetFrameRate = 300;
 		// Create initial positions
-		total 			= x*y*z;
-		m_matrices 		= new Matrix4x4[total];
-		positionArray 	= new Vector3[total];
-		quaternionArray	= new Quaternion[total];
+		total = x * y * z;
+		m_matrices = new Matrix4x4[total];
+		positionArray = new Vector3[total];
+		quaternionArray = new Quaternion[total];
 		rigidBodyVelocitiesArray = new Vector3[total];
-		m_cubeScale 	= new Vector3(scale,scale,scale);
+		m_cubeScale = new Vector3(scale, scale, scale);
 		m_deltaTimeShaderProperty = Shader.PropertyToID("deltaTime");
 
-		const int particlesPerBody			= 8;
-		int n_particles						= particlesPerBody * total;
-		int numGridCells					= gridX*gridY*gridZ;
+		const int particlesPerBody = 8;
+		int n_particles = particlesPerBody * total;
+		int numGridCells = gridX * gridY * gridZ;
 
 		particleForcesArray = new Vector3[n_particles];
 
 		for (int i = 0; i < x; i++) {
 			for (int j = 0; j < y; j++) {
 				for (int k = 0; k < z; k++) {
-					positionArray[IDX(i,j,k)] = new Vector3(i*scale, j*scale, k*scale) + new Vector3(0.5f * scale, 0.5f * scale, 0.5f * scale);
-					quaternionArray[IDX(i,j,k)] = Quaternion.identity;
-					rigidBodyVelocitiesArray[IDX(i,j,k)] = Vector3.zero;
+					positionArray[IDX(i, j, k)] = new Vector3(i * scale, j * scale, k * scale) + new Vector3(0.5f * scale, 0.5f * scale, 0.5f * scale);
+					quaternionArray[IDX(i, j, k)] = Quaternion.identity;
+					rigidBodyVelocitiesArray[IDX(i, j, k)] = Vector3.zero;
 				}
 			}
 		}
 		// rigid body velocities
-		positionArray[IDX(0,y-1,0)] = m_firstCubeLocation;
-		rigidBodyVelocitiesArray[IDX(0,y-1,0)] = m_firstCubeVelocity;
+		positionArray[IDX(0, y - 1, 0)] = m_firstCubeLocation;
+		rigidBodyVelocitiesArray[IDX(0, y - 1, 0)] = m_firstCubeVelocity;
 		quaternionArray[IDX(0, y - 1, 0)] = Quaternion.Euler(m_firstCubeRotation);
 		particleVelocities = new Vector3[n_particles];
 		particlePositions = new Vector3[n_particles];
@@ -143,44 +143,44 @@ public class GPUPhysics : MonoBehaviour {
 		particleVoxelPositionsArray = new int[n_particles * 3];
 
 		// Get Kernels
-		m_kernel_generateParticleValues 		= m_computeShader.FindKernel("GenerateParticleValues");
-		m_kernel_clearGrid 						= m_computeShader.FindKernel("ClearGrid");
-		m_kernel_populateGrid					= m_computeShader.FindKernel("PopulateGrid");
-		m_kernel_collisionDetection				= m_computeShader.FindKernel("CollisionDetection");
-		m_kernel_computeMomenta					= m_computeShader.FindKernel("ComputeMomenta");
-		m_kernel_computePositionAndRotation		= m_computeShader.FindKernel("ComputePositionAndRotation");
+		m_kernel_generateParticleValues = m_computeShader.FindKernel("GenerateParticleValues");
+		m_kernel_clearGrid = m_computeShader.FindKernel("ClearGrid");
+		m_kernel_populateGrid = m_computeShader.FindKernel("PopulateGrid");
+		m_kernel_collisionDetection = m_computeShader.FindKernel("CollisionDetection");
+		m_kernel_computeMomenta = m_computeShader.FindKernel("ComputeMomenta");
+		m_kernel_computePositionAndRotation = m_computeShader.FindKernel("ComputePositionAndRotation");
 
 		// Count Thread Groups
-		m_threadGroupsPerRigidBody				= Mathf.CeilToInt(total / 8.0f);
-		m_threadGroupsPerParticle				= Mathf.CeilToInt(n_particles / 8f);
-		m_threadGroupsPerGridCell				= Mathf.CeilToInt((gridX*gridY*gridZ) / 8f);
+		m_threadGroupsPerRigidBody = Mathf.CeilToInt(total / 8.0f);
+		m_threadGroupsPerParticle = Mathf.CeilToInt(n_particles / 8f);
+		m_threadGroupsPerGridCell = Mathf.CeilToInt((gridX * gridY * gridZ) / 8f);
 
 		// Create initial buffers
-		const int floatThree 				= 3 * sizeof(float);
-		const int floatFour 				= 4 * sizeof(float);
-		const int intFour 					= 4 * sizeof(int);
-		const int intThree 					= 3 * sizeof(int);
+		const int floatThree = 3 * sizeof(float);
+		const int floatFour = 4 * sizeof(float);
+		const int intFour = 4 * sizeof(int);
+		const int intThree = 3 * sizeof(int);
 
-		m_rigidBodyPositions				= new ComputeBuffer(total, floatThree);
-		m_rigidBodyQuaternions				= new ComputeBuffer(total, floatFour);
-		m_rigidBodyAngularVelocities 		= new ComputeBuffer(total, floatThree);
-		m_rigidBodyVelocities 				= new ComputeBuffer(total, floatThree);
+		m_rigidBodyPositions = new ComputeBuffer(total, floatThree);
+		m_rigidBodyQuaternions = new ComputeBuffer(total, floatFour);
+		m_rigidBodyAngularVelocities = new ComputeBuffer(total, floatThree);
+		m_rigidBodyVelocities = new ComputeBuffer(total, floatThree);
 
-		m_particleInitialRelativePositions	= new ComputeBuffer(n_particles, floatThree);
-		m_particlePositions					= new ComputeBuffer(n_particles, floatThree);
-		m_particleRelativePositions			= new ComputeBuffer(n_particles, floatThree);
-		m_particleVelocities				= new ComputeBuffer(n_particles, floatThree);
-		m_particleForces					= new ComputeBuffer(n_particles, floatThree);
+		m_particleInitialRelativePositions = new ComputeBuffer(n_particles, floatThree);
+		m_particlePositions = new ComputeBuffer(n_particles, floatThree);
+		m_particleRelativePositions = new ComputeBuffer(n_particles, floatThree);
+		m_particleVelocities = new ComputeBuffer(n_particles, floatThree);
+		m_particleForces = new ComputeBuffer(n_particles, floatThree);
 
-		m_voxelCollisionGrid				= new ComputeBuffer(numGridCells, intFour);
-		m_debugParticleVoxelPositions		= new ComputeBuffer(n_particles, intThree);
-		m_debugParticleIds					= new ComputeBuffer(debug_particle_id_count, sizeof(int));
+		m_voxelCollisionGrid = new ComputeBuffer(numGridCells, intFour);
+		m_debugParticleVoxelPositions = new ComputeBuffer(n_particles, intThree);
+		m_debugParticleIds = new ComputeBuffer(debug_particle_id_count, sizeof(int));
 		Debug.Log("nparticles: " + n_particles);
 		// initialize constants
-		int[] gridDimensions = new int[]{gridX, gridY, gridZ};
+		int[] gridDimensions = new int[] { gridX, gridY, gridZ };
 		m_computeShader.SetInts("gridDimensions", gridDimensions);
 		m_computeShader.SetInt("gridMax", numGridCells);
-		m_computeShader.SetFloat("particleDiameter", scale*0.5f);
+		m_computeShader.SetFloat("particleDiameter", scale * 0.5f);
 		m_computeShader.SetFloat("springCoefficient", springCoefficient);
 		m_computeShader.SetFloat("dampingCoefficient", dampingCoefficient);
 		m_computeShader.SetFloat("frictionCoefficient", frictionCoefficient);
@@ -188,20 +188,25 @@ public class GPUPhysics : MonoBehaviour {
 		m_computeShader.SetFloat("gravityCoefficient", gravityCoefficient);
 		m_computeShader.SetFloat("tangentialCoefficient", tangentialCoefficient);
 		m_computeShader.SetFloat("angularForceScalar", angularForceScalar);
-		m_computeShader.SetFloats("gridStartPosition", new float[]{gridStartPosition.x, gridStartPosition.y, gridStartPosition.z});
-		m_computeShader.SetFloat("particleMass", m_cubeMass/particlesPerBody);
+		m_computeShader.SetFloats("gridStartPosition", new float[] { gridStartPosition.x, gridStartPosition.y, gridStartPosition.z });
+		m_computeShader.SetFloat("particleMass", m_cubeMass / particlesPerBody);
 
 		// Inertial tensor of a cube formula taken from textbook:
 		// "Essential Mathematics for Games and Interactive Applications"
 		// by James Van Verth and Lars Bishop
-		float twoDimSq = 2.0f * (scale*scale);
-		float inertialTensorFactor = m_cubeMass * 1.0f/12.0f * twoDimSq;
+		float twoDimSq = 2.0f * (scale * scale);
+		float inertialTensorFactor = m_cubeMass * 1.0f / 12.0f * twoDimSq;
 		float[] inertialTensor = {
-			inertialTensorFactor, 0.0f,	0.0f,
+			inertialTensorFactor, 0.0f, 0.0f,
 			0.0f, inertialTensorFactor, 0.0f,
 			0.0f, 0.0f, inertialTensorFactor
 		};
+		float[] inverseInertialTensor;
+		GPUPhysics.Invert(ref inertialTensor, out inverseInertialTensor);
 		m_computeShader.SetFloats("inertialTensor", inertialTensor);
+		m_computeShader.SetFloats("inverseInertialTensor", inverseInertialTensor);
+
+
 
 		// initialize buffers
 		// initial relative positions
@@ -209,17 +214,17 @@ public class GPUPhysics : MonoBehaviour {
 		float quarterScale = scale * 0.25f;
 		particleInitialRelativePositions = new Vector3[n_particles];
 		Vector3[] particleInitialsSmall = new Vector3[particlesPerBody];
-		particleInitialsSmall[0] = new Vector3(quarterScale, 	quarterScale, 	quarterScale);
-		particleInitialsSmall[1] = new Vector3(-quarterScale, 	quarterScale, 	quarterScale);
-		particleInitialsSmall[2] = new Vector3(quarterScale, 	quarterScale, 	-quarterScale);
-		particleInitialsSmall[3] = new Vector3(-quarterScale, 	quarterScale, 	-quarterScale);
-		particleInitialsSmall[4] = new Vector3(quarterScale, 	-quarterScale, quarterScale);
-		particleInitialsSmall[5] = new Vector3(-quarterScale, 	-quarterScale, quarterScale);
-		particleInitialsSmall[6] = new Vector3(quarterScale, 	-quarterScale, -quarterScale);
-		particleInitialsSmall[7] = new Vector3(-quarterScale, 	-quarterScale, -quarterScale);
+		particleInitialsSmall[0] = new Vector3(quarterScale, quarterScale, quarterScale);
+		particleInitialsSmall[1] = new Vector3(-quarterScale, quarterScale, quarterScale);
+		particleInitialsSmall[2] = new Vector3(quarterScale, quarterScale, -quarterScale);
+		particleInitialsSmall[3] = new Vector3(-quarterScale, quarterScale, -quarterScale);
+		particleInitialsSmall[4] = new Vector3(quarterScale, -quarterScale, quarterScale);
+		particleInitialsSmall[5] = new Vector3(-quarterScale, -quarterScale, quarterScale);
+		particleInitialsSmall[6] = new Vector3(quarterScale, -quarterScale, -quarterScale);
+		particleInitialsSmall[7] = new Vector3(-quarterScale, -quarterScale, -quarterScale);
 
 		for (int i = 0; i < particleInitialRelativePositions.Length; i++) {
-			particleInitialRelativePositions[i] = particleInitialsSmall[i%8];
+			particleInitialRelativePositions[i] = particleInitialsSmall[i % 8];
 		}
 
 		m_particleInitialRelativePositions.SetData(particleInitialRelativePositions);
@@ -277,17 +282,17 @@ public class GPUPhysics : MonoBehaviour {
 		m_computeShader.SetBuffer(m_kernel_computePositionAndRotation, "rigidBodyQuaternions", m_rigidBodyQuaternions);
 
 		// Setup Indirect Renderer
-		uint[] sphereArgs = new uint[]{sphereMesh.GetIndexCount(0), (uint)n_particles, 0, 0, 0};
-		m_bufferWithSphereArgs = new ComputeBuffer(1, sphereArgs.Length*sizeof(uint), ComputeBufferType.IndirectArguments);
+		uint[] sphereArgs = new uint[] { sphereMesh.GetIndexCount(0), (uint)n_particles, 0, 0, 0 };
+		m_bufferWithSphereArgs = new ComputeBuffer(1, sphereArgs.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
 		m_bufferWithSphereArgs.SetData(sphereArgs);
 
-		uint[] lineArgs = new uint[]{lineMesh.GetIndexCount(0), (uint)n_particles, 0, 0, 0};
-		m_bufferWithLineArgs = new ComputeBuffer(1, lineArgs.Length*sizeof(uint), ComputeBufferType.IndirectArguments);
+		uint[] lineArgs = new uint[] { lineMesh.GetIndexCount(0), (uint)n_particles, 0, 0, 0 };
+		m_bufferWithLineArgs = new ComputeBuffer(1, lineArgs.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
 		m_bufferWithLineArgs.SetData(lineArgs);
 
 		cubeMaterial.SetBuffer("positions", m_rigidBodyPositions);
 		cubeMaterial.SetBuffer("quaternions", m_rigidBodyQuaternions);
-		sphereMaterial.SetBuffer("positions",m_particlePositions);
+		sphereMaterial.SetBuffer("positions", m_particlePositions);
 		sphereMaterial.SetVector("scale", new Vector4(0.25f, 0.25f, 0.25f, 1.0f));
 		lineMaterial.SetBuffer("positions", m_particlePositions);
 		lineMaterial.SetBuffer("vectors", m_particleVelocities);
@@ -295,7 +300,7 @@ public class GPUPhysics : MonoBehaviour {
 		// Setup Command Buffer
 		m_commandBuffer = new CommandBuffer();
 		m_commandBuffer.BeginSample("GenerateParticleValues");
-		m_commandBuffer.DispatchCompute(m_computeShader,m_kernel_generateParticleValues, m_threadGroupsPerRigidBody, 1, 1);
+		m_commandBuffer.DispatchCompute(m_computeShader, m_kernel_generateParticleValues, m_threadGroupsPerRigidBody, 1, 1);
 		m_commandBuffer.EndSample("GenerateParticleValues");
 
 		m_commandBuffer.BeginSample("ClearGrid");
@@ -311,7 +316,7 @@ public class GPUPhysics : MonoBehaviour {
 		m_commandBuffer.EndSample("CollisionDetection");
 
 		m_commandBuffer.BeginSample("ComputeMomenta");
-		m_commandBuffer.DispatchCompute(m_computeShader, m_kernel_computeMomenta, m_threadGroupsPerRigidBody, 1 ,1);
+		m_commandBuffer.DispatchCompute(m_computeShader, m_kernel_computeMomenta, m_threadGroupsPerRigidBody, 1, 1);
 		m_commandBuffer.EndSample("ComputeMomenta");
 
 		m_commandBuffer.BeginSample("ComputePositions");
@@ -319,14 +324,14 @@ public class GPUPhysics : MonoBehaviour {
 		m_commandBuffer.EndSample("ComputePositions");
 
 		// rendering in command buffer - doesnt work for now seems like a unity bug
-		#if !(UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX) // Command Buffer DrawMeshInstancedIndirect doesnt work on my mac
+#if !(UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX) // Command Buffer DrawMeshInstancedIndirect doesnt work on my mac
 		// rendering from command buffer via update isnt working so disabling this is necessary for delta time use
-//		m_commandBuffer.BeginSample("DrawMeshInstancedIndirect");
-//		m_commandBuffer.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, 0, m_bufferWithArgs);
-//		m_commandBuffer.EndSample("DrawMeshInstancedIndirect");
-		#endif
+		//		m_commandBuffer.BeginSample("DrawMeshInstancedIndirect");
+		//		m_commandBuffer.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, 0, m_bufferWithArgs);
+		//		m_commandBuffer.EndSample("DrawMeshInstancedIndirect");
+#endif
 
-//		Camera.main.AddCommandBuffer(CameraEvent.AfterSkybox, m_commandBuffer);
+		//		Camera.main.AddCommandBuffer(CameraEvent.AfterSkybox, m_commandBuffer);
 	}
 
 	private void SetMatrices(Vector3[] positions, Quaternion[] quaternions) {
@@ -339,15 +344,15 @@ public class GPUPhysics : MonoBehaviour {
 		return i + (j * x) + (k * x * y);
 	}
 
-	void Update () {
+	void Update() {
 		if (m_bufferWithArgs == null || m_debugWireframe != m_lastDebugWireframe) {
-			uint indexCountPerInstance 		= cubeMesh.GetIndexCount(0);
-			uint instanceCount 				= (uint)total;
-			uint startIndexLocation 		= 0;
-			uint baseVertexLocation 		= 0;
-			uint startInstanceLocation 		= 0;
-			uint[] args = new uint[]{indexCountPerInstance, instanceCount , startIndexLocation, baseVertexLocation, startInstanceLocation};
-			m_bufferWithArgs = new ComputeBuffer(1, args.Length*sizeof(uint), ComputeBufferType.IndirectArguments);
+			uint indexCountPerInstance = cubeMesh.GetIndexCount(0);
+			uint instanceCount = (uint)total;
+			uint startIndexLocation = 0;
+			uint baseVertexLocation = 0;
+			uint startInstanceLocation = 0;
+			uint[] args = new uint[] { indexCountPerInstance, instanceCount, startIndexLocation, baseVertexLocation, startInstanceLocation };
+			m_bufferWithArgs = new ComputeBuffer(1, args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
 			m_bufferWithArgs.SetData(args);
 			m_lastDebugWireframe = m_debugWireframe;
 		}
@@ -364,13 +369,13 @@ public class GPUPhysics : MonoBehaviour {
 		*/
 		m_computeShader.SetFloat(m_deltaTimeShaderProperty, Time.deltaTime);
 		Graphics.ExecuteCommandBuffer(m_commandBuffer);
-//		#if (UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX) // Command Buffer DrawMeshInstancedIndirect doesnt work on my mac
-			Graphics.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, m_bounds, m_bufferWithArgs);
-			if (m_debugWireframe) {
-				//Graphics.DrawMeshInstancedIndirect(sphereMesh, 0, sphereMaterial, m_bounds, m_bufferWithSphereArgs);
-				Graphics.DrawMeshInstancedIndirect(lineMesh, 0, lineMaterial, m_bounds, m_bufferWithLineArgs);
-			}
-//		#endif
+		//		#if (UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX) // Command Buffer DrawMeshInstancedIndirect doesnt work on my mac
+		Graphics.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, m_bounds, m_bufferWithArgs);
+		if (m_debugWireframe) {
+			//Graphics.DrawMeshInstancedIndirect(sphereMesh, 0, sphereMaterial, m_bounds, m_bufferWithSphereArgs);
+			Graphics.DrawMeshInstancedIndirect(lineMesh, 0, lineMaterial, m_bounds, m_bufferWithLineArgs);
+		}
+		//		#endif
 		/*
 		m_computeShader.Dispatch(m_kernel_generateParticleValues, m_threadGroupsPerRigidBody, 1, 1);
 		m_computeShader.Dispatch(m_kernel_clearGrid, m_threadGroupsPerGridCell, 1, 1);
@@ -379,25 +384,25 @@ public class GPUPhysics : MonoBehaviour {
 		m_computeShader.Dispatch(m_kernel_computeMomenta, m_threadGroupsPerRigidBody, 1, 1);
 		m_computeShader.Dispatch(m_kernel_computePositionAndRotation, m_threadGroupsPerRigidBody, 1, 1);
 		*/
-//			m_particleRelativePositions.GetData(particleRelativePositions);
-//			m_particleVelocities.GetData(particleVelocities);
-//			m_rigidBodyVelocities.GetData(rigidBodyVelocitiesArray);
-//			m_particleForces.GetData(particleForcesArray);
-			
-//			m_particlePositions.GetData(particlePositions);
-//			m_voxelCollisionGrid.GetData(voxelGridArray);
-//			m_debugParticleVoxelPositions.GetData(particleVoxelPositionsArray);
+		//			m_particleRelativePositions.GetData(particleRelativePositions);
+		//			m_particleVelocities.GetData(particleVelocities);
+		//			m_rigidBodyVelocities.GetData(rigidBodyVelocitiesArray);
+		//			m_particleForces.GetData(particleForcesArray);
 
-			//m_rigidBodyPositions.GetData(positionArray);
-			//m_rigidBodyQuaternions.GetData(quaternionArray);
+		//			m_particlePositions.GetData(particlePositions);
+		//			m_voxelCollisionGrid.GetData(voxelGridArray);
+		//			m_debugParticleVoxelPositions.GetData(particleVoxelPositionsArray);
 
-//			m_debugParticleIds.GetData(debugParticleIds);
-			//SetMatrices(positionArray, quaternionArray);
+		//m_rigidBodyPositions.GetData(positionArray);
+		//m_rigidBodyQuaternions.GetData(quaternionArray);
+
+		//			m_debugParticleIds.GetData(debugParticleIds);
+		//SetMatrices(positionArray, quaternionArray);
 
 
 		//Graphics.DrawMeshInstanced(cubeMesh, 0, cubeMaterial, m_matrices, total, null, UnityEngine.Rendering.ShadowCastingMode.On, true, 0, Camera.main);
 		//Graphics.ExecuteCommandBuffer(m_commandBuffer);
-		
+
 	}
 
 	void OnDestroy() {
@@ -414,5 +419,35 @@ public class GPUPhysics : MonoBehaviour {
 
 		m_debugParticleVoxelPositions.Release();
 		m_voxelCollisionGrid.Release();
+	}
+
+	public static int M(int row, int column) {
+		return (row-1) * 3 + (column-1);
+	}
+	public static void Invert(ref float[] value, out float[] result) {
+		float d11 = value[M(2,2)] * value[M(3,3)] + value[M(2,3)] * -value[M(3,2)];
+		float d12 = value[M(2,1)] * value[M(3,3)] + value[M(2,3)] * -value[M(3,1)];
+		float d13 = value[M(2,1)] * value[M(3,2)] + value[M(2,2)] * -value[M(3,1)];
+
+		float det = value[M(1,1)] * d11 - value[M(1,2)] * d12 + value[M(1,3)] * d13;
+		result = new float[] { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+		if (Mathf.Abs(det) == 0.0f) {
+			return;
+		}
+
+		det = 1f / det;
+
+		float d21 = value[M(1, 2)] * value[M(3, 3)] + value[M(1, 3)] * -value[M(3, 2)];
+		float d22 = value[M(1, 1)] * value[M(3, 3)] + value[M(1, 3)] * -value[M(3, 1)];
+		float d23 = value[M(1, 1)] * value[M(3, 2)] + value[M(1, 2)] * -value[M(3, 1)];
+
+		float d31 = (value[M(1, 2)] * value[M(2, 3)]) - (value[M(1, 3)] * value[M(2, 2)]);
+		float d32 = (value[M(1, 1)] * value[M(2, 3)]) - (value[M(1, 3)] * value[M(2, 1)]);
+		float d33 = (value[M(1, 1)] * value[M(2, 2)]) - (value[M(1, 2)] * value[M(2, 1)]);
+
+		result[M(1,1)] = +d11 * det; result[M(1,2)] = -d21 * det; result[M(1,3)] = +d31 * det;
+		result[M(2,1)] = -d12 * det; result[M(2,2)] = +d22 * det; result[M(2,3)] = -d32 * det;
+		result[M(3,1)] = +d13 * det; result[M(3,2)] = -d23 * det; result[M(3,3)] = +d33 * det;
 	}
 }
