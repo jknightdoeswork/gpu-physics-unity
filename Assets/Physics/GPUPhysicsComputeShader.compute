@@ -219,7 +219,7 @@ float3 _collisionReaction(int j_id, int i_id)
 		float3 relativePositionNormalized = relativePosition / relativePositionMagnitude;
 
 		// repulsive force (Equation 10)
-		float3 repulsiveForce = springCoefficient * (particleDiameter - relativePositionMagnitude) * relativePositionNormalized;
+		float3 repulsiveForce = -springCoefficient * (particleDiameter - relativePositionMagnitude) * relativePositionNormalized;
 		// damping force (Equation 11)
 		// https://www2.msm.ctw.utwente.nl/sluding/PAPERS/luding_alert2008.pdf 
 		// says that the damping force acts along the normal....
@@ -237,16 +237,38 @@ float3 _collisionReaction(int j_id, int i_id)
 	return float3(0,0,0);
 }
 
-float _collisionReactionWithGround(int i_id) {
-	if ( particlePositions[i_id].y < particleDiameter*0.5) {
-		// repulsive force (Equation 10)
-		float spring = -springCoefficient * (particleDiameter*0.5 - particlePositions[i_id].y);
-		// damping
-		float damping = dampingCoefficient * -particleVelocities[i_id].y;
+float3 _collisionReactionWithGround(int i_id) {
 
-		return spring + damping;
+	float3 groundParticlePosition = particlePositions[i_id];
+	groundParticlePosition.y = -particleDiameter*0.5;
+
+
+	float3 relativePosition = groundParticlePosition - particlePositions[i_id]; // position of j relative to i
+	float relativePositionMagnitude = length(relativePosition);
+
+	if (relativePositionMagnitude < particleDiameter)
+	{
+		float3 relativePositionNormalized = relativePosition / relativePositionMagnitude;
+
+		// repulsive force (Equation 10)
+		float3 repulsiveForce = -springCoefficient * (particleDiameter - relativePositionMagnitude) * relativePositionNormalized;
+		// damping force (Equation 11)
+		// https://www2.msm.ctw.utwente.nl/sluding/PAPERS/luding_alert2008.pdf 
+		// says that the damping force acts along the normal....
+		// not sure whether relativeVelocity is relative to particle i's position or particle i's velocity
+		// using velocity here
+		float3 relativeVelocity = float3(0.0f,0.0f,0.0f) - particleVelocities[i_id]; // not sure if correct
+		float3 dampingForce = dampingCoefficient * relativeVelocity;
+
+		// tangential force (Equation 12)
+		float3 tangentialVelocity = relativeVelocity - (dot(relativeVelocity, relativePositionNormalized) * relativePositionNormalized);
+		float3 tangentialForce = tangentialCoefficient * tangentialVelocity;
+
+		return repulsiveForce + dampingForce + tangentialForce;
+
 	}
-	return 0;
+
+	return float3(0.0f,0.0f,0.0f);
 }
 
 // Returns the grid location for particle p
@@ -323,7 +345,7 @@ void CollisionDetection (uint3 id : SV_DispatchThreadID)
 	force += _checkGridCell(i, i_gridLocation.x+1, 	i_gridLocation.y-1, 	i_gridLocation.z-1);
 	
 	force.y -= gravityCoefficient;
-	force.y += _collisionReactionWithGround(i);
+	force += _collisionReactionWithGround(i);
 
 	particleForces[i] = force;
 }
