@@ -5,12 +5,13 @@
 #include "Quaternion.cginc"
 
 // Kernels
-#pragma kernel GenerateParticleValues 		// Per Rigid Body	0
-#pragma kernel ClearGrid					// Per Grid Cell	1
-#pragma kernel PopulateGrid					// Per Particle		2
-#pragma kernel CollisionDetection			// Per Particle		3
-#pragma kernel ComputeMomenta				// Per Rigid Body	4
-#pragma kernel ComputePositionAndRotation	// Per Rigid Body	5
+#pragma kernel GenerateParticleValues 			// Per Rigid Body	0
+#pragma kernel ClearGrid						// Per Grid Cell	1
+#pragma kernel PopulateGrid						// Per Particle		2
+#pragma kernel CollisionDetection				// Per Particle		3
+#pragma kernel ComputeMomenta					// Per Rigid Body	4
+#pragma kernel ComputePositionAndRotation		// Per Rigid Body	5
+#pragma kernel SavePreviousPositionAndRotation	// Per Rigid Body	6
 
 // Buffers
 // rigidBodyPositions 				(RWStructuredBuffer<float3>)
@@ -408,7 +409,18 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 
 	float cubeMass = particleMass * 8;
 	rigidBodyVelocities[id.x] += deltaTime * linearForce/cubeMass;
-	rigidBodyAngularVelocities[id.x] += deltaTime * mul(inverseInertialTensor, angularForce); // probably wrong
+
+
+	// old rotation
+	/*
+	float4x4 rotationMatrix = quaternion_to_matrix(rigidBodyQuaternions[id.x]);
+	float4x4 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
+	
+
+	rigidBodyAngularVelocities[id.x] += deltaTime * mul(inverseInertialMatrix, angularForce); // probably wrong
+	*/
+	// new rotation
+	rigidBodyAngularVelocities[id.x] += deltaTime * angularForce; // probably wrong
 
 
 
@@ -432,21 +444,37 @@ float angularForceScalar;
 [numthreads(RIGID_BODY_THREAD_COUNT,1,1)]
 void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 {
-	rigidBodyPositions[id.x] 		= rigidBodyPositions[id.x] + rigidBodyVelocities[id.x] * deltaTime;
-	/*
-	if (rigidBodyPositions[id.x].y < 0) {
-		rigidBodyPositions[id.x].y = 0;
-		if (rigidBodyVelocities[id.x].y < 0) {
-			rigidBodyVelocities[id.x].y = 0;
-		}
-	}
-	*/
+	// integrate position
+		rigidBodyPositions[id.x] 		= rigidBodyPositions[id.x] + rigidBodyVelocities[id.x] * deltaTime;
+
+	// new rotation
+	float4x4 rotationMatrix = quaternion_to_matrix(rigidBodyQuaternions[id.x]);
+	float4x4 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
+	float3 rigidBodyAngularVelocity = mul(inverseInertialMatrix, rigidBodyAngularVelocities[id.x]);
+	
+	
+
+	// old rotation
+	//rigidBodyAngularVelocities[id.x] += deltaTime * mul(inverseInertialMatrix, angularForce); // probably wrong
 
 	// integration of angular velocity taken from
 	// "Essential Mathematics for Games and Interactive Applications"
 	// by James Van Verth and Lars Bishop
-	float4 omega = float4(0, rigidBodyAngularVelocities[id.x]);
+
+	// old
+	//float4 omega = float4(0, rigidBodyAngularVelocities[id.x]);
+	// new
+	float4 omega = float4(0, rigidBodyAngularVelocity);
+	
 	float4 q = rigidBodyQuaternions[id.x];
 	rigidBodyQuaternions[id.x] = normalize(q + deltaTime * (0.5*quat_concat(omega, q)));
+}
 
+RWStructuredBuffer<float3> 	previousRigidBodyPositions;
+RWStructuredBuffer<float4> 	previousRigidBodyQuaternions;
+[numthreads(RIGID_BODY_THREAD_COUNT,1,1)]
+void SavePreviousPositionAndRotation (uint3 id : SV_DispatchThreadID)
+{
+	previousRigidBodyPositions[id.x] = rigidBodyPositions[id.x];
+	previousRigidBodyQuaternions[id.x] = rigidBodyQuaternions[id.x];
 }
