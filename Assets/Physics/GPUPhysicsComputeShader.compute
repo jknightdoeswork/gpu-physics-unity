@@ -437,11 +437,10 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 	/*
 	float4x4 rotationMatrix = quaternion_to_matrix(rigidBodyQuaternions[id.x]);
 	float4x4 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
-	
-
 	rigidBodyAngularVelocities[id.x] += deltaTime * mul(inverseInertialMatrix, angularForce); // probably wrong
 	*/
 	// new rotation
+
 	rigidBodyAngularVelocities[id.x] += deltaTime * angularForce; // probably wrong
 
 
@@ -470,14 +469,15 @@ void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 		rigidBodyPositions[id.x] 		= rigidBodyPositions[id.x] + rigidBodyVelocities[id.x] * deltaTime;
 
 	// new rotation
+	
 	float4x4 rotationMatrix = quaternion_to_matrix(rigidBodyQuaternions[id.x]);
 	float4x4 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
 	float3 rigidBodyAngularVelocity = mul(inverseInertialMatrix, rigidBodyAngularVelocities[id.x]);
 	
-	
 
 	// old rotation
-	//rigidBodyAngularVelocities[id.x] += deltaTime * mul(inverseInertialMatrix, angularForce); // probably wrong
+	//float3 rigidBodyAngularVelocity = rigidBodyAngularVelocities[id.x];
+	
 
 	// integration of angular velocity taken from
 	// "Essential Mathematics for Games and Interactive Applications"
