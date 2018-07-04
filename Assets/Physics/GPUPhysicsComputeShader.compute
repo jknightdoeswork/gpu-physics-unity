@@ -470,8 +470,8 @@ void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 
 	// new rotation
 	
-	float4x4 rotationMatrix = quaternion_to_matrix(rigidBodyQuaternions[id.x]);
-	float4x4 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
+	float3x3 rotationMatrix = quaternion_to_matrix3x3(rigidBodyQuaternions[id.x]);
+	float3x3 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
 	float3 rigidBodyAngularVelocity = mul(inverseInertialMatrix, rigidBodyAngularVelocities[id.x]);
 	
 

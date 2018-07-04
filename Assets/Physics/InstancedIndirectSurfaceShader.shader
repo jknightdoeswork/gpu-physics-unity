@@ -46,7 +46,8 @@
 		#ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
 			//float4x4 rotation = quaternion_to_matrix(nlerp(previousQuaternions[unity_InstanceID], quaternions[unity_InstanceID], blendAlpha));
 			float4x4 rotation = quaternion_to_matrix(quaternions[unity_InstanceID]);
-			float3 position 	= lerp(previousPositions[unity_InstanceID], positions[unity_InstanceID], blendAlpha);
+			//float3 position 	= lerp(previousPositions[unity_InstanceID], positions[unity_InstanceID], blendAlpha);
+			float3 position 	= positions[unity_InstanceID];
 			float4x4 translation = {
 				1,0,0,position.x,
 				0,1,0,position.y,

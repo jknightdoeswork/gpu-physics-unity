@@ -212,6 +212,11 @@ public class GPUPhysics : MonoBehaviour {
 		};
 		float[] inverseInertialTensor;
 		GPUPhysics.Invert(ref inertialTensor, out inverseInertialTensor);
+		float[] quickInverseInertialTensor = {
+			1.0f/inertialTensorFactor, 0.0f, 0.0f,
+			0.0f, 1.0f/inertialTensorFactor, 0.0f,
+			0.0f, 0.0f, 1.0f/inertialTensorFactor
+		};
 		m_computeShader.SetFloats("inertialTensor", inertialTensor);
 		m_computeShader.SetFloats("inverseInertialTensor", inverseInertialTensor);
 
