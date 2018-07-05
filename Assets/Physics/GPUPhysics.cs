@@ -24,9 +24,11 @@ public class GPUPhysics : MonoBehaviour {
 			return CjLib.PrimitiveMeshFactory.Line(Vector3.zero, new Vector3(1.0f, 1.0f, 1.0f));
 		}
 	}
+	public Rigidbody[] comparisonCubes;
 	public Material cubeMaterial;
 	public Material sphereMaterial;
 	public Material lineMaterial;
+	public Material lineAngularMaterial;
 	public Bounds m_bounds;
 	public float m_cubeMass;
 	public float scale;
@@ -37,6 +39,7 @@ public class GPUPhysics : MonoBehaviour {
 	public float frictionCoefficient;
 	public float angularFrictionCoefficient;
 	public float angularForceScalar;
+	public float linearForceScalar;
 	public int x = 10;
 	public int y = 20;
 	public int z = 5;
@@ -106,6 +109,8 @@ public class GPUPhysics : MonoBehaviour {
 	private int m_threadGroupsPerGridCell;
 	private int m_deltaTimeShaderProperty;
 
+	public Quaternion m_rigidBodyQuaternion;
+	public Quaternion m_comparisonQuaternion;
 	public Vector3 gridStartPosition;
 
 	private ComputeBuffer m_bufferWithArgs;
@@ -197,8 +202,10 @@ public class GPUPhysics : MonoBehaviour {
 		m_computeShader.SetFloat("gravityCoefficient", gravityCoefficient);
 		m_computeShader.SetFloat("tangentialCoefficient", tangentialCoefficient);
 		m_computeShader.SetFloat("angularForceScalar", angularForceScalar);
-		m_computeShader.SetFloats("gridStartPosition", new float[] { gridStartPosition.x, gridStartPosition.y, gridStartPosition.z });
+		m_computeShader.SetFloat("linearForceScalar", linearForceScalar);
 		m_computeShader.SetFloat("particleMass", m_cubeMass / particlesPerBody);
+		m_computeShader.SetFloats("gridStartPosition", new float[] { gridStartPosition.x, gridStartPosition.y, gridStartPosition.z });
+
 
 		// Inertial tensor of a cube formula taken from textbook:
 		// "Essential Mathematics for Games and Interactive Applications"
@@ -416,11 +423,11 @@ public class GPUPhysics : MonoBehaviour {
         State state = currentState * alpha + 
             previousState * ( 1.0 - alpha );
         */
-		ticker += Time.deltaTime*dt;
+		ticker += Time.deltaTime;
 		float _dt = 1.0f / tick_rate;
 		while (ticker >= _dt) {
 			ticker -= _dt;
-			m_computeShader.SetFloat(m_deltaTimeShaderProperty, _dt);
+			m_computeShader.SetFloat(m_deltaTimeShaderProperty, dt);
 
 			Graphics.ExecuteCommandBuffer(m_commandBuffer);
 		}
@@ -430,8 +437,31 @@ public class GPUPhysics : MonoBehaviour {
 		
 		Graphics.DrawMeshInstancedIndirect(cubeMesh, 0, cubeMaterial, m_bounds, m_bufferWithArgs);
 		if (m_debugWireframe) {
-			Graphics.DrawMeshInstancedIndirect(sphereMesh, 0, sphereMaterial, m_bounds, m_bufferWithSphereArgs);
+			m_computeShader.SetFloat("particleDiameter", scale * 0.5f);
+			m_computeShader.SetFloat("springCoefficient", springCoefficient);
+			m_computeShader.SetFloat("dampingCoefficient", dampingCoefficient);
+			m_computeShader.SetFloat("frictionCoefficient", frictionCoefficient);
+			m_computeShader.SetFloat("angularFrictionCoefficient", angularFrictionCoefficient);
+			m_computeShader.SetFloat("gravityCoefficient", gravityCoefficient);
+			m_computeShader.SetFloat("tangentialCoefficient", tangentialCoefficient);
+			m_computeShader.SetFloat("angularForceScalar", angularForceScalar);
+			m_computeShader.SetFloat("linearForceScalar", linearForceScalar);
+			int particlesPerBody = 8;
+			m_computeShader.SetFloat("particleMass", m_cubeMass / particlesPerBody);
+
+			//Graphics.DrawMeshInstancedIndirect(sphereMesh, 0, sphereMaterial, m_bounds, m_bufferWithSphereArgs);
+			//lineMaterial.SetBuffer("positions", m_particlePositions);
+			//lineMaterial.SetBuffer("vectors", m_particleVelocities);		
+
+			lineMaterial.SetBuffer("positions", m_rigidBodyPositions);
+			lineMaterial.SetBuffer("vectors", m_rigidBodyAngularVelocities);
 			Graphics.DrawMeshInstancedIndirect(lineMesh, 0, lineMaterial, m_bounds, m_bufferWithLineArgs);
+			m_rigidBodyQuaternions.GetData(quaternionArray);
+			foreach(var r in comparisonCubes) {
+				Debug.DrawLine(r.transform.position, r.transform.position + 10*r.angularVelocity, Color.green, Time.deltaTime*2);
+				m_comparisonQuaternion = r.transform.rotation;
+			}
+			
 		}
 		//		#endif
 		/*

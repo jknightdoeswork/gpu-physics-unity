@@ -48,7 +48,7 @@
                     float3 position = positions[instance_id];
                     float3 vect = vectors[instance_id];
                     //vect = float3(0,0,0);
-                    float3 endPoint = float3(vect.x * v.vertex.x, vect.y * v.vertex.y, vect.z * v.vertex.z);
+                    float3 endPoint = float3(10*vect.x * v.vertex.x, 10*vect.y * v.vertex.y, 10*vect.z * v.vertex.z);
 
                    	o.vertex = UnityObjectToClipPos(position + endPoint);
                     #else

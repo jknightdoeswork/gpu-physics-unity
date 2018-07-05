@@ -361,7 +361,8 @@ void CollisionDetection (uint3 id : SV_DispatchThreadID)
 
 float frictionCoefficient;
 float angularFrictionCoefficient;
-
+float angularForceScalar;
+float linearForceScalar;
 // Output
 //RWStructuredBuffer<float3> rigidBodyAngularVelocities; // defined in Computation Of Particle Values
 //RWStructuredBuffer<float3> rigidBodyVelocities; // defined in Computation Of Particle Values
@@ -425,23 +426,24 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 	debugParticleIds[p_id] = p_id;
 
 
-	rigidBodyVelocities[id.x] *= frictionCoefficient;
+	//rigidBodyVelocities[id.x] *= frictionCoefficient;
 
-	rigidBodyAngularVelocities[id.x] *= angularFrictionCoefficient;
+	//rigidBodyAngularVelocities[id.x] *= angularFrictionCoefficient;
 
 	float cubeMass = particleMass * 8;
-	rigidBodyVelocities[id.x] += deltaTime * linearForce/cubeMass;
+	rigidBodyVelocities[id.x] /= 1.0 + frictionCoefficient;
+	rigidBodyVelocities[id.x] += linearForceScalar * deltaTime * linearForce/cubeMass;
 
 
 	// old rotation
-	/*
-	float4x4 rotationMatrix = quaternion_to_matrix(rigidBodyQuaternions[id.x]);
-	float4x4 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
-	rigidBodyAngularVelocities[id.x] += deltaTime * mul(inverseInertialMatrix, angularForce); // probably wrong
-	*/
+	
+	//float3x3 rotationMatrix = quaternion_to_matrix(rigidBodyQuaternions[id.x]);
+	//float3x3 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
+	//rigidBodyAngularVelocities[id.x] += deltaTime * mul(inverseInertialMatrix, angularForce); // probably wrong
+	
 	// new rotation
-
-	rigidBodyAngularVelocities[id.x] += deltaTime * angularForce; // probably wrong
+	rigidBodyAngularVelocities[id.x] /= 1.0 + angularFrictionCoefficient;
+	rigidBodyAngularVelocities[id.x] += angularForceScalar * deltaTime * angularForce; // probably wrong
 
 
 
@@ -461,7 +463,6 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 // RWStructuredBuffer<float3> rigidBodyPosition; // defined in Computation Of Particle Values
 // RWStructuredBuffer<float3> rigidBodyQuaternions;
 
-float angularForceScalar;
 [numthreads(RIGID_BODY_THREAD_COUNT,1,1)]
 void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 {
@@ -470,9 +471,9 @@ void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 
 	// new rotation
 	
-	float3x3 rotationMatrix = quaternion_to_matrix3x3(rigidBodyQuaternions[id.x]);
-	float3x3 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
-	float3 rigidBodyAngularVelocity = mul(inverseInertialMatrix, rigidBodyAngularVelocities[id.x]);
+	 float3x3 rotationMatrix = quaternion_to_matrix3x3(rigidBodyQuaternions[id.x]);
+	 float3x3 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
+	 float3 rigidBodyAngularVelocity = mul(inverseInertialMatrix, rigidBodyAngularVelocities[id.x]);
 	
 
 	// old rotation
@@ -486,7 +487,7 @@ void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 	// old
 	//float4 omega = float4(0, rigidBodyAngularVelocities[id.x]);
 	// new
-	float4 omega = float4(0, rigidBodyAngularVelocity);
+	float4 omega = float4(rigidBodyAngularVelocity, 0);
 	
 	float4 q = rigidBodyQuaternions[id.x];
 	rigidBodyQuaternions[id.x] = normalize(q + deltaTime * (0.5*quat_concat(omega, q)));
