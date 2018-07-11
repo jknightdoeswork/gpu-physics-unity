@@ -69,7 +69,7 @@ public class GPUPhysics : MonoBehaviour {
 	private ComputeBuffer m_previousRigidBodyQuaternions;		// float4
 	private ComputeBuffer m_rigidBodyAngularVelocities;         // float3
 	private ComputeBuffer m_rigidBodyVelocities;                // float3
-
+	private ComputeBuffer m_rigidBodyInertialTensors;			// Matrix4x4
 	private ComputeBuffer m_particleInitialRelativePositions;   // float3
 	private ComputeBuffer m_particlePositions;                  // float3
 	private ComputeBuffer m_particleRelativePositions;          // float3
@@ -84,6 +84,7 @@ public class GPUPhysics : MonoBehaviour {
 
 	private CommandBuffer m_commandBuffer;
 
+
 	public Vector3[] positionArray;                         // cpu->matrix
 	public Quaternion[] quaternionArray;                        // cpu->matrix
 	public Vector3[] particleForcesArray;
@@ -92,6 +93,7 @@ public class GPUPhysics : MonoBehaviour {
 	public Vector3[] particlePositions;
 	public Vector3[] particleRelativePositions;
 	public Vector3[] particleInitialRelativePositions;
+	public float[] rigidBodyInertialTensors;
 
 	public int[] voxelGridArray;
 	public int[] particleVoxelPositionsArray;
@@ -113,6 +115,7 @@ public class GPUPhysics : MonoBehaviour {
 	public Quaternion m_comparisonQuaternion;
 	public Vector3 gridStartPosition;
 
+	public float m_maximumVelocity;
 	private ComputeBuffer m_bufferWithArgs;
 	private ComputeBuffer m_bufferWithSphereArgs;
 	private ComputeBuffer m_bufferWithLineArgs;
@@ -127,7 +130,7 @@ public class GPUPhysics : MonoBehaviour {
 		rigidBodyVelocitiesArray = new Vector3[total];
 		m_cubeScale = new Vector3(scale, scale, scale);
 		m_deltaTimeShaderProperty = Shader.PropertyToID("deltaTime");
-
+		rigidBodyInertialTensors = new float[total*9];
 		const int particlesPerBody = 8;
 		int n_particles = particlesPerBody * total;
 		int numGridCells = gridX * gridY * gridZ;
@@ -172,6 +175,7 @@ public class GPUPhysics : MonoBehaviour {
 		const int floatFour = 4 * sizeof(float);
 		const int intFour = 4 * sizeof(int);
 		const int intThree = 3 * sizeof(int);
+		const int floatNine = 9*sizeof(float);
 
 		m_rigidBodyPositions = new ComputeBuffer(total, floatThree);
 		m_previousRigidBodyPositions = new ComputeBuffer(total, floatThree);
@@ -179,6 +183,7 @@ public class GPUPhysics : MonoBehaviour {
 		m_previousRigidBodyQuaternions = new ComputeBuffer(total, floatFour);
 		m_rigidBodyAngularVelocities = new ComputeBuffer(total, floatThree);
 		m_rigidBodyVelocities = new ComputeBuffer(total, floatThree);
+		m_rigidBodyInertialTensors = new ComputeBuffer(total, floatNine);
 
 		m_particleInitialRelativePositions = new ComputeBuffer(n_particles, floatThree);
 		m_particlePositions = new ComputeBuffer(n_particles, floatThree);
@@ -225,7 +230,7 @@ public class GPUPhysics : MonoBehaviour {
 			0.0f, 0.0f, 1.0f/inertialTensorFactor
 		};
 		m_computeShader.SetFloats("inertialTensor", inertialTensor);
-		m_computeShader.SetFloats("inverseInertialTensor", inverseInertialTensor);
+		m_computeShader.SetFloats("inverseInertialTensor", quickInverseInertialTensor);
 
 
 
@@ -302,6 +307,7 @@ public class GPUPhysics : MonoBehaviour {
 		m_computeShader.SetBuffer(m_kernel_computePositionAndRotation, "rigidBodyAngularVelocities", m_rigidBodyAngularVelocities);
 		m_computeShader.SetBuffer(m_kernel_computePositionAndRotation, "rigidBodyPositions", m_rigidBodyPositions);
 		m_computeShader.SetBuffer(m_kernel_computePositionAndRotation, "rigidBodyQuaternions", m_rigidBodyQuaternions);
+		m_computeShader.SetBuffer(m_kernel_computePositionAndRotation, "inverseInertialMatrices", m_rigidBodyInertialTensors);
 
 		// kernel 6 Save Previous Position and Rotation
 		m_computeShader.SetBuffer(m_kernelSavePreviousPositionAndRotation, "rigidBodyPositions", m_rigidBodyPositions);
@@ -377,7 +383,7 @@ public class GPUPhysics : MonoBehaviour {
 	private int IDX(int i, int j, int k) {
 		return i + (j * x) + (k * x * y);
 	}
-
+	public Matrix4x4 inverseInertialMatrix;
 	void Update() {
 
 		if (m_bufferWithArgs == null || m_debugWireframe != m_lastDebugWireframe) {
@@ -448,11 +454,20 @@ public class GPUPhysics : MonoBehaviour {
 			m_computeShader.SetFloat("linearForceScalar", linearForceScalar);
 			int particlesPerBody = 8;
 			m_computeShader.SetFloat("particleMass", m_cubeMass / particlesPerBody);
-
+			m_rigidBodyInertialTensors.GetData(rigidBodyInertialTensors);
+			string floatString = "";
+			for (int i = 0; i < rigidBodyInertialTensors.Length; i++) {
+				if (i % 3 == 0) {
+					floatString += "\n";		
+				}
+				floatString += string.Format("\t{0}", rigidBodyInertialTensors[i].ToString());
+			}
+			Debug.Log("[GPUPhysics] inertialTensor:\n" + floatString);
+			
 			//Graphics.DrawMeshInstancedIndirect(sphereMesh, 0, sphereMaterial, m_bounds, m_bufferWithSphereArgs);
 			//lineMaterial.SetBuffer("positions", m_particlePositions);
 			//lineMaterial.SetBuffer("vectors", m_particleVelocities);		
-
+			
 			lineMaterial.SetBuffer("positions", m_rigidBodyPositions);
 			lineMaterial.SetBuffer("vectors", m_rigidBodyAngularVelocities);
 			Graphics.DrawMeshInstancedIndirect(lineMesh, 0, lineMaterial, m_bounds, m_bufferWithLineArgs);

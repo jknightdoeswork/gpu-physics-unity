@@ -226,6 +226,20 @@ float3 _collisionReaction(int j_id, int i_id)
 		// not sure whether relativeVelocity is relative to particle i's position or particle i's velocity
 		// using velocity here
 		float3 relativeVelocity = particleVelocities[j_id] - particleVelocities[i_id]; // not sure if correct
+		// project relative velocity along the relative position
+		/*
+		// Projects a vector onto another vector.
+        public static Vector3 Project(Vector3 vector, Vector3 onNormal)
+        {
+            float sqrMag = Dot(onNormal, onNormal);
+            if (sqrMag < Mathf.Epsilon)
+                return zero;
+            else
+                return onNormal * Dot(vector, onNormal) / sqrMag;
+        }
+
+		*/
+		//relativeVelocity = relativePositionNormalized * dot(relativeVelocity, relativePositionNormalized);
 		float3 dampingForce = dampingCoefficient * relativeVelocity;
 
 		// tangential force (Equation 12)
@@ -258,6 +272,7 @@ float3 _collisionReactionWithGround(int i_id) {
 		// not sure whether relativeVelocity is relative to particle i's position or particle i's velocity
 		// using velocity here
 		float3 relativeVelocity = float3(0.0f,0.0f,0.0f) - particleVelocities[i_id]; // not sure if correct
+		//relativeVelocity = relativePositionNormalized * dot(relativeVelocity, relativePositionNormalized);
 		float3 dampingForce = dampingCoefficient * relativeVelocity;
 
 		// tangential force (Equation 12)
@@ -425,7 +440,8 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 	angularForce 				+= cross(relativePosition, particleForces[p_id]);
 	debugParticleIds[p_id] = p_id;
 
-
+	// test:
+	
 	//rigidBodyVelocities[id.x] *= frictionCoefficient;
 
 	//rigidBodyAngularVelocities[id.x] *= angularFrictionCoefficient;
@@ -437,7 +453,7 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 
 	// old rotation
 	
-	//float3x3 rotationMatrix = quaternion_to_matrix(rigidBodyQuaternions[id.x]);
+	//float3x3 rotationMatrix = quaternion_to_matrix3x3(rigidBodyQuaternions[id.x]);
 	//float3x3 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
 	//rigidBodyAngularVelocities[id.x] += deltaTime * mul(inverseInertialMatrix, angularForce); // probably wrong
 	
@@ -462,27 +478,34 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 // Output
 // RWStructuredBuffer<float3> rigidBodyPosition; // defined in Computation Of Particle Values
 // RWStructuredBuffer<float3> rigidBodyQuaternions;
-
+ RWStructuredBuffer<float3x3> inverseInertialMatrices;
 [numthreads(RIGID_BODY_THREAD_COUNT,1,1)]
 void ComputePositionAndRotation (uint3 id : SV_DispatchThreadID)
 {
 	// integrate position
 		rigidBodyPositions[id.x] 		= rigidBodyPositions[id.x] + rigidBodyVelocities[id.x] * deltaTime;
 
-	// new rotation
-	
-	 float3x3 rotationMatrix = quaternion_to_matrix3x3(rigidBodyQuaternions[id.x]);
-	 float3x3 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
-	 float3 rigidBodyAngularVelocity = mul(inverseInertialMatrix, rigidBodyAngularVelocities[id.x]);
-	
-
-	// old rotation
-	//float3 rigidBodyAngularVelocity = rigidBodyAngularVelocities[id.x];
-	
-
 	// integration of angular velocity taken from
 	// "Essential Mathematics for Games and Interactive Applications"
 	// by James Van Verth and Lars Bishop
+
+	// attempt #1 to apply the inverse inertial tensor....
+	// float3x3 rotationMatrix = quaternion_to_matrix3x3(rigidBodyQuaternions[id.x]);
+	// float3x3 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
+	// inverseInertialMatrices[id.x] = inverseInertialMatrix;
+	// float3 rigidBodyAngularVelocity = mul(inverseInertialMatrix, rigidBodyAngularVelocities[id.x]);
+	
+
+	// attempt #2 to apply the inverse inertial tensor....
+	// float3x3 rotationMatrix = quaternion_to_matrix3x3(rigidBodyQuaternions[id.x]);
+	// float3x3 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
+	// inverseInertialMatrices[id.x] = inverseInertialMatrix;
+	// float3 rigidBodyAngularVelocity = mul(inverseInertialTensor, rigidBodyAngularVelocities[id.x]);
+	// old rotation
+	float3 rigidBodyAngularVelocity = rigidBodyAngularVelocities[id.x];
+	
+
+
 
 	// old
 	//float4 omega = float4(0, rigidBodyAngularVelocities[id.x]);
