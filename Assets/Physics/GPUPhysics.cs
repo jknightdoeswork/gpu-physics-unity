@@ -131,10 +131,12 @@ public class GPUPhysics : MonoBehaviour {
 		m_cubeScale = new Vector3(scale, scale, scale);
 		m_deltaTimeShaderProperty = Shader.PropertyToID("deltaTime");
 		rigidBodyInertialTensors = new float[total*9];
-		const int particlesPerBody = 8;
+		const int particlesPerEdge = 2;
+		const int particlesPerEdgeMinusOne = particlesPerEdge-2;
+		const int particlesPerBody = particlesPerEdge * particlesPerEdge * particlesPerEdge - particlesPerEdgeMinusOne*particlesPerEdgeMinusOne*particlesPerEdgeMinusOne;
 		int n_particles = particlesPerBody * total;
 		int numGridCells = gridX * gridY * gridZ;
-
+		float particleDiameter = scale / particlesPerEdge;
 		particleForcesArray = new Vector3[n_particles];
 
 		for (int i = 0; i < x; i++) {
@@ -199,7 +201,8 @@ public class GPUPhysics : MonoBehaviour {
 		int[] gridDimensions = new int[] { gridX, gridY, gridZ };
 		m_computeShader.SetInts("gridDimensions", gridDimensions);
 		m_computeShader.SetInt("gridMax", numGridCells);
-		m_computeShader.SetFloat("particleDiameter", scale * 0.5f);
+		m_computeShader.SetInt("particlesPerRigidBody", particlesPerBody);
+		m_computeShader.SetFloat("particleDiameter", particleDiameter);
 		m_computeShader.SetFloat("springCoefficient", springCoefficient);
 		m_computeShader.SetFloat("dampingCoefficient", dampingCoefficient);
 		m_computeShader.SetFloat("frictionCoefficient", frictionCoefficient);
@@ -240,6 +243,25 @@ public class GPUPhysics : MonoBehaviour {
 		float quarterScale = scale * 0.25f;
 		particleInitialRelativePositions = new Vector3[n_particles];
 		Vector3[] particleInitialsSmall = new Vector3[particlesPerBody];
+		int initialRelativePositionIterator = 0;
+		float centerer = scale * -0.5f + particleDiameter*0.5f;
+		Vector3 centeringOffset = new Vector3(centerer, centerer, centerer);
+		//centeringOffset = Vector3.zero;
+		for (int xIter = 0; xIter < particlesPerEdge; xIter++) {
+			for (int yIter = 0; yIter < particlesPerEdge; yIter++) {
+				for (int zIter = 0; zIter < particlesPerEdge; zIter++) {
+					if (xIter == 0 || xIter == (particlesPerEdge-1) || yIter == 0 || yIter == (particlesPerEdge-1) || zIter == 0 || zIter == (particlesPerEdge-1)) {
+						particleInitialsSmall[initialRelativePositionIterator] = centeringOffset + new Vector3(xIter*particleDiameter, yIter*particleDiameter, zIter*particleDiameter);
+						//Debug.Log("[GPUPhysics] particleInitialsSmall["+initialRelativePositionIterator+"] = " + particleInitialsSmall[initialRelativePositionIterator]);
+						initialRelativePositionIterator++;
+					}
+					else {
+						Debug.Log("[GPUPhysics] skipped: " + xIter + ", " + yIter + ", " + zIter);
+					}
+				}
+			}
+		}
+		/*
 		particleInitialsSmall[0] = new Vector3(quarterScale, quarterScale, quarterScale);
 		particleInitialsSmall[1] = new Vector3(-quarterScale, quarterScale, quarterScale);
 		particleInitialsSmall[2] = new Vector3(quarterScale, quarterScale, -quarterScale);
@@ -248,9 +270,9 @@ public class GPUPhysics : MonoBehaviour {
 		particleInitialsSmall[5] = new Vector3(-quarterScale, -quarterScale, quarterScale);
 		particleInitialsSmall[6] = new Vector3(quarterScale, -quarterScale, -quarterScale);
 		particleInitialsSmall[7] = new Vector3(-quarterScale, -quarterScale, -quarterScale);
-
+*/
 		for (int i = 0; i < particleInitialRelativePositions.Length; i++) {
-			particleInitialRelativePositions[i] = particleInitialsSmall[i % 8];
+			particleInitialRelativePositions[i] = particleInitialsSmall[i % particlesPerBody];
 		}
 
 		m_particleInitialRelativePositions.SetData(particleInitialRelativePositions);
@@ -330,7 +352,7 @@ public class GPUPhysics : MonoBehaviour {
 		cubeMaterial.SetBuffer("previousQuaternions", m_previousRigidBodyQuaternions);
 
 		sphereMaterial.SetBuffer("positions", m_particlePositions);
-		sphereMaterial.SetVector("scale", new Vector4(0.25f, 0.25f, 0.25f, 1.0f));
+		sphereMaterial.SetVector("scale", new Vector4(particleDiameter*0.5f, particleDiameter*0.5f, particleDiameter*0.5f, 1.0f));
 		lineMaterial.SetBuffer("positions", m_particlePositions);
 		lineMaterial.SetBuffer("vectors", m_particleVelocities);
 
@@ -454,6 +476,7 @@ public class GPUPhysics : MonoBehaviour {
 			m_computeShader.SetFloat("linearForceScalar", linearForceScalar);
 			int particlesPerBody = 8;
 			m_computeShader.SetFloat("particleMass", m_cubeMass / particlesPerBody);
+			/*
 			m_rigidBodyInertialTensors.GetData(rigidBodyInertialTensors);
 			string floatString = "";
 			for (int i = 0; i < rigidBodyInertialTensors.Length; i++) {
@@ -463,8 +486,9 @@ public class GPUPhysics : MonoBehaviour {
 				floatString += string.Format("\t{0}", rigidBodyInertialTensors[i].ToString());
 			}
 			Debug.Log("[GPUPhysics] inertialTensor:\n" + floatString);
-			
-			//Graphics.DrawMeshInstancedIndirect(sphereMesh, 0, sphereMaterial, m_bounds, m_bufferWithSphereArgs);
+			*/
+
+			Graphics.DrawMeshInstancedIndirect(sphereMesh, 0, sphereMaterial, m_bounds, m_bufferWithSphereArgs);
 			//lineMaterial.SetBuffer("positions", m_particlePositions);
 			//lineMaterial.SetBuffer("vectors", m_particleVelocities);		
 			

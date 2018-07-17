@@ -34,7 +34,7 @@
 // springCoefficient 				(float) (negative) (Equation 10)
 // dampingCoefficient 				(float) (Equation 11)
 // tangentialCoefficient 			(float) (Equation 12)
-#define particlesPerRigidBody 8;
+int particlesPerRigidBody;
 float deltaTime;
 float particleMass;
 float3x3 inertialTensor;
@@ -79,61 +79,12 @@ void GenerateParticleValues (uint3 id : SV_DispatchThreadID)
 	float3 rigidBodyAngularVelocity = rigidBodyAngularVelocities[id.x];
 	float3 rigidBodyVelocity	= rigidBodyVelocities[id.x];
 
-	// particle 1
-	int p_id = id.x * particlesPerRigidBody;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
-	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
-	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
-	//debugParticleIds[p_id] = p_id;
-
-	// particle 2
-	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
-	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
-	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
-	//debugParticleIds[p_id] = p_id;
-
-	// particle 3
-	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
-	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
-	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
-	//debugParticleIds[p_id] = p_id;
-
-	// particle 4
-	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
-	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
- 	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
- 	//debugParticleIds[p_id] = p_id;
-
-	// particle 5
- 	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
-	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
- 	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
- 	//debugParticleIds[p_id] = p_id;
-
- 	// particle 6
- 	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
-	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
- 	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
- 	//debugParticleIds[p_id] = p_id;
-
- 	// particle 7
- 	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
-	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
- 	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
- 	//debugParticleIds[p_id] = p_id;
-
- 	// particle 8
- 	p_id++;
-	particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
-	particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
- 	particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
- 	//debugParticleIds[p_id] = p_id;
+	for (int i = 0; i < particlesPerRigidBody; i++) {
+		int p_id = id.x * particlesPerRigidBody + i;
+		particleRelativePositions[p_id] = rotateVectorByQuaternion(rigidBodyQuaternion, particleInitialRelativePositions[p_id]);
+		particlePositions[p_id] = rigidBodyPosition + particleRelativePositions[p_id];
+		particleVelocities[p_id] = rigidBodyVelocity + cross(rigidBodyAngularVelocity, particleRelativePositions[p_id]);
+	}
 }
 
 
@@ -384,75 +335,23 @@ float linearForceScalar;
 [numthreads(RIGID_BODY_THREAD_COUNT,1,1)]
 void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 {
-	//particle 1
-	int p_id = id.x * particlesPerRigidBody;
-	float3 relativePosition 	= particleRelativePositions[p_id];
-	float3 linearForce 			= particleForces[p_id];
-	float3 angularForce 		= cross(relativePosition, particleForces[p_id]);
-	debugParticleIds[p_id] = p_id;
+	float3 relativePosition 	= float3(0,0,0);
+	float3 linearForce 			= float3(0,0,0);
+	float3 angularForce 		= float3(0,0,0);
 
-	// particle 2
-	p_id++;
-	relativePosition 			= particleRelativePositions[p_id];
-	linearForce 				+= particleForces[p_id];
-	angularForce 				+= cross(relativePosition, particleForces[p_id]);
-	debugParticleIds[p_id] = p_id;
-
-	// particle 3
-	p_id++;
-	relativePosition 			= particleRelativePositions[p_id];
-	linearForce 				+= particleForces[p_id];
-	angularForce 				+= cross(relativePosition, particleForces[p_id]);
-	debugParticleIds[p_id] = p_id;
-
-	// particle 4
-	p_id++;
-	relativePosition 			= particleRelativePositions[p_id];
-	linearForce 				+= particleForces[p_id];
-	angularForce 				+= cross(relativePosition, particleForces[p_id]);
-	debugParticleIds[p_id] = p_id;
-
-	// particle 5
-	p_id++;
-	relativePosition 			= particleRelativePositions[p_id];
-	linearForce 				+= particleForces[p_id];
-	angularForce 				+= cross(relativePosition, particleForces[p_id]);
-	debugParticleIds[p_id] = p_id;
-
-	// particle 6
-	p_id++;
-	relativePosition 			= particleRelativePositions[p_id];
-	linearForce 				+= particleForces[p_id];
-	angularForce 				+= cross(relativePosition, particleForces[p_id]);
-	debugParticleIds[p_id] = p_id;
-
-	// particle 7
-	p_id++;
-	relativePosition 			= particleRelativePositions[p_id];
-	linearForce 				+= particleForces[p_id];
-	angularForce 				+= cross(relativePosition, particleForces[p_id]);
-	debugParticleIds[p_id] = p_id;
-
-	// particle 8
-	p_id++;
-	relativePosition 			= particleRelativePositions[p_id];
-	linearForce 				+= particleForces[p_id];
-	angularForce 				+= cross(relativePosition, particleForces[p_id]);
-	debugParticleIds[p_id] = p_id;
-
-	// test:
-	
-	//rigidBodyVelocities[id.x] *= frictionCoefficient;
-
-	//rigidBodyAngularVelocities[id.x] *= angularFrictionCoefficient;
+	for (int i = 0; i < particlesPerRigidBody; i++) 
+	{
+		int p_id 					= id.x * particlesPerRigidBody + i;
+		relativePosition 			= particleRelativePositions[p_id];
+		linearForce 				+= particleForces[p_id];
+		angularForce 				+= cross(relativePosition, particleForces[p_id]);	
+	}
 
 	float cubeMass = particleMass * 8;
 	rigidBodyVelocities[id.x] /= 1.0 + deltaTime*frictionCoefficient;
 	rigidBodyVelocities[id.x] += linearForceScalar * deltaTime * linearForce/cubeMass;
 
-
 	// old rotation
-	
 	//float3x3 rotationMatrix = quaternion_to_matrix3x3(rigidBodyQuaternions[id.x]);
 	//float3x3 inverseInertialMatrix = mul(rotationMatrix, mul(inverseInertialTensor, transpose(rotationMatrix)));
 	//rigidBodyAngularVelocities[id.x] += deltaTime * mul(inverseInertialMatrix, angularForce); // probably wrong
@@ -460,10 +359,6 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 	// new rotation
 	rigidBodyAngularVelocities[id.x] /= 1.0 + deltaTime*angularFrictionCoefficient;
 	rigidBodyAngularVelocities[id.x] += angularForceScalar * deltaTime * angularForce; // probably wrong
-
-
-
-	//rigidBodyVelocities[id.x].y -= gravityCoefficient * deltaTime;
 }
 
 /////////////////////////////
