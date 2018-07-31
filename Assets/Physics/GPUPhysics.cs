@@ -545,6 +545,21 @@ public class GPUPhysics : MonoBehaviour {
 
 		m_debugParticleVoxelPositions.Release();
 		m_voxelCollisionGrid.Release();
+
+		m_previousRigidBodyQuaternions.Release();
+		m_previousRigidBodyPositions.Release();
+		m_rigidBodyInertialTensors.Release();
+		m_debugParticleIds.Release();
+
+		if (m_bufferWithSphereArgs != null) {
+			m_bufferWithSphereArgs.Release();
+		}
+		if (m_bufferWithLineArgs != null) {
+			m_bufferWithLineArgs.Release();
+		}
+		if (m_bufferWithArgs != null) {
+			m_bufferWithArgs.Release();
+		}
 	}
 
 	public static int M(int row, int column) {
