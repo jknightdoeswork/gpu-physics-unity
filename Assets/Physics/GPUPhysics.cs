@@ -240,7 +240,6 @@ public class GPUPhysics : MonoBehaviour {
 		// initialize buffers
 		// initial relative positions
 		// super dependent on 8/rigid body
-		float quarterScale = scale * 0.25f;
 		particleInitialRelativePositions = new Vector3[n_particles];
 		Vector3[] particleInitialsSmall = new Vector3[particlesPerBody];
 		int initialRelativePositionIterator = 0;
