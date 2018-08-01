@@ -346,10 +346,14 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 		linearForce 				+= particleForces[p_id];
 		angularForce 				+= cross(relativePosition, particleForces[p_id]);	
 	}
+	float threshold = 1.0 / pow(10.0,6);
 
-	float cubeMass = particleMass * 8;
+	float cubeMass = particleMass * particlesPerRigidBody;
 	rigidBodyVelocities[id.x] /= 1.0 + deltaTime*frictionCoefficient;
 	rigidBodyVelocities[id.x] += linearForceScalar * deltaTime * linearForce/cubeMass;
+	if (length(rigidBodyVelocities[id.x]) < threshold) {
+		rigidBodyVelocities[id.x] = float3(0.0,0.0,0.0);
+	}
 
 	// old rotation
 	//float3x3 rotationMatrix = quaternion_to_matrix3x3(rigidBodyQuaternions[id.x]);
@@ -359,6 +363,9 @@ void ComputeMomenta (uint3 id : SV_DispatchThreadID)
 	// new rotation
 	rigidBodyAngularVelocities[id.x] /= 1.0 + deltaTime*angularFrictionCoefficient;
 	rigidBodyAngularVelocities[id.x] += angularForceScalar * deltaTime * angularForce; // probably wrong
+	if (length(rigidBodyAngularVelocities[id.x]) < threshold) {
+		rigidBodyAngularVelocities[id.x] = float3(0.0,0.0,0.0);
+	}
 }
 
 /////////////////////////////
