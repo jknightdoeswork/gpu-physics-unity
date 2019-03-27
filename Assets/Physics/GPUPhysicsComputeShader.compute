@@ -5,13 +5,26 @@
 #include "Quaternion.cginc"
 
 // Kernels
-#pragma kernel GenerateParticleValues 			// Per Rigid Body	0
-#pragma kernel ClearGrid						// Per Grid Cell	1
-#pragma kernel PopulateGrid						// Per Particle		2
-#pragma kernel CollisionDetection				// Per Particle		3
-#pragma kernel ComputeMomenta					// Per Rigid Body	4
-#pragma kernel ComputePositionAndRotation		// Per Rigid Body	5
-#pragma kernel SavePreviousPositionAndRotation	// Per Rigid Body	6
+// Per Rigid Body	0
+#pragma kernel GenerateParticleValues
+
+// Per Grid Cell	1
+#pragma kernel ClearGrid
+
+// Per Particle		2
+#pragma kernel PopulateGrid
+
+// Per Particle		3
+#pragma kernel CollisionDetection
+
+// Per Rigid Body	4
+#pragma kernel ComputeMomenta
+
+// Per Rigid Body	5
+#pragma kernel ComputePositionAndRotation
+
+// Per Rigid Body	6
+#pragma kernel SavePreviousPositionAndRotation
 
 // Buffers
 // rigidBodyPositions 				(RWStructuredBuffer<float3>)
